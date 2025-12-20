@@ -84,23 +84,28 @@
         max-height: 70vh;
         overflow-y: auto;
     }
-    /* Style Spécifique Rapport Impression */
+    /* Style Spécifique Rapport Impression MISE À JOUR */
     @media print {
-        body { padding-top: 0 !important; background-color: white !important; }
-        .modal-footer, .navbar, .btn-close, .alert, .no-print { display: none !important; }
-        .modal-content { border: none !important; box-shadow: none !important; }
-        .container { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
-        .print-only { display: block !important; }
+        body * { visibility: hidden; }
+        #modalRapport, #modalRapport * { visibility: visible; }
+        #modalRapport { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
+        .modal-dialog { max-width: 100% !important; width: 100% !important; margin: 0 !important; }
+        .modal-content { border: none !important; }
+        .modal-footer, .btn-close, .no-print { display: none !important; }
+        /* Forcer la répétition du header du tableau sur les nouvelles pages */
+        thead { display: table-header-group; }
+        tfoot { display: table-footer-group; }
+        tr { page-break-inside: avoid; }
+        /* Forcer les signatures à rester groupées à la fin */
+        .signature-section { page-break-inside: avoid; margin-top: 30px; }
         .table-secondary { background-color: #e2e3e5 !important; -webkit-print-color-adjust: exact; }
     }
-    /* Style pour l'aperçu des signatures dans le rapport */
     .signature-img {
       max-width: 180px;
       max-height: 100px;
       display: block;
       margin: 10px auto;
     }
-    /* Nouveau style pour les avances */
     #zoneAvancesDisponibles {
       background-color: #e7f3ff;
       border: 1px solid #b3d7ff;
@@ -196,7 +201,7 @@
     <div class="modal fade" id="modalRapport" tabindex="-1">
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
-          <div class="modal-header bg-dark text-white">
+          <div class="modal-header bg-dark text-white no-print">
             <h5 class="modal-title font-monospace">ÉTAT FINANCIER DÉTAILLÉ</h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
           </div>
@@ -514,7 +519,7 @@
                         <div class="col-4 fw-bold">ÉDITÉ LE: <br>${new Date().toLocaleDateString()}</div>
                     </div>
                 </div>
-                <div class="row mt-5">
+                <div class="row mt-5 signature-section">
                     <div class="col-6 text-center">
                         <span class="fw-bold border-bottom">SIGNATURE LOCATAIRE</span><br>${sigLocataireImg}
                     </div>
@@ -551,18 +556,13 @@
         return;
       }
 
-      // Tri des données (plus récent en haut)
       const dataTriee = [...data].sort((a, b) => b.mois.localeCompare(a.mois));
-      
-      // Récupération du mois le plus récent payé pour marquer le "Avant dernier mois payé"
       const paiementsSeuls = dataTriee.filter(p => p.type === 'Paiement');
       const dernierMoisValeur = paiementsSeuls.length > 0 ? paiementsSeuls[0].mois : null;
 
       dataTriee.forEach(p => {
         const row = document.createElement('tr');
         let moisAffiche = p.type === 'Avance' ? "Versement d'avance" : formaterMoisTexte(p.mois);
-        
-        // MODIFICATION : Écrire "Dernier mois payé" pour le mois le plus élevé
         if (p.type === 'Paiement' && p.mois === dernierMoisValeur) {
             moisAffiche += ' <strong class="text-success">(Dernier mois payé)</strong>';
         }
@@ -612,13 +612,12 @@
     toggleHistoriqueBtn.addEventListener('click', toggleHistorique);
     window.onload = () => { mettreAJourNavbarDate(); chargerAppartements(); };
 
-    // Enregistrement du Service Worker pour la PWA
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js').then(registration => {
-          console.log('SW registered: ', registration);
+          console.log('SW registered');
         }).catch(registrationError => {
-          console.log('SW registration failed: ', registrationError);
+          console.log('SW registration failed');
         });
       });
     }
