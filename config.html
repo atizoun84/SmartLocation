@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartLocation – Configuration</title>
+  
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#003366">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/609/609803.png">
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f0f2f5;
+      font-family: 'Segoe UI', sans-serif;
+      color: #333;
+      padding-top: 70px;
+    }
+    h2 {
+      color: #003366;
+      font-weight: 600;
+    }
+    .form-label {
+      font-weight: 500;
+      color: #003366;
+    }
+    .btn-primary {
+      background-color: #003366;
+      border: none;
+    }
+    .btn-primary:hover {
+      background-color: #00509e;
+    }
+    .card {
+      border-left: 5px solid #003366;
+      margin-top: 10px;
+    }
+    footer {
+      margin-top: 40px;
+      font-size: 0.9em;
+      text-align: center;
+      color: #666;
+    }
+    .navbar {
+      background-color: #003366;
+    }
+    .navbar-brand, .nav-link {
+      color: white !important;
+    }
+    .nav-link:hover {
+      text-decoration: underline;
+    }
+    /* Style pour l'aperçu des signatures */
+    .signature-preview {
+      max-width: 150px;
+      max-height: 80px;
+      border: 1px dashed #ccc;
+      margin-top: 5px;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar fixed-top navbar-expand-lg">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">SmartLocation</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon bg-light"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item"><a class="nav-link" href="index.html">Tableau de bord</a></li>
+          <li class="nav-item"><a class="nav-link active" href="config.html">Configuration</a></li>
+          <li class="nav-item"><a class="nav-link" href="gestion.html">Gestion</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h2 class="text-center mb-4">🛠️ Configuration des Appartements</h2>
+
+    <form id="formAppartement" class="border p-3 rounded bg-white shadow-sm">
+      <div class="mb-3">
+        <label class="form-label">🏢 Nom de l'appartement</label>
+        <input type="text" id="nom" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">📅 Date d'intégration</label>
+        <input type="date" id="date" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">💰 Coût mensuel (FCFA)</label>
+        <input type="number" id="cout" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">💵 Avance sur loyer (FCFA)</label>
+        <input type="number" id="avance" class="form-control" required>
+      </div>
+      
+      <div class="mb-3">
+        <label class="form-label">🔑 Nom du propriétaire</label>
+        <input type="text" id="proprietaireNom" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">☎️ Contact du propriétaire</label>
+        <input type="tel" id="proprietaireContact" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">✍️ Signature du propriétaire (PNG)</label>
+        <input type="file" id="signatureProprio" class="form-control" accept="image/png">
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">👤 Nom du locataire</label>
+        <input type="text" id="locataire" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">📞 Téléphone</label>
+        <input type="tel" id="telephone" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">✍️ Signature du locataire (PNG)</label>
+        <input type="file" id="signatureLocataire" class="form-control" accept="image/png">
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100">Ajouter l'appartement</button>
+    </form>
+
+    <div class="d-flex gap-2 flex-wrap">
+        <button id="toggleListe" class="btn btn-outline-primary mt-4">Afficher les appartements</button>
+    </div>
+    
+    <div id="listeAppartements" class="mt-3" style="display: none;"></div>
+
+    <hr class="mt-5">
+    <div class="card bg-light border-0 shadow-sm mb-4">
+        <div class="card-body text-center">
+            <h5 class="card-title text-primary">💾 Sauvegarde des données</h5>
+            <p class="small text-muted">Téléchargez vos données au format JSON pour les conserver en sécurité.</p>
+            <div class="d-flex gap-2 justify-content-center flex-wrap">
+                <button onclick="exporterDonnees()" class="btn btn-success btn-lg px-4">Sauvegarder en JSON</button>
+                <button onclick="document.getElementById('importFile').click()" class="btn btn-outline-warning btn-lg px-4">Restaurer un fichier JSON</button>
+                <input type="file" id="importFile" style="display:none" accept=".json" onchange="importerDonnees(this)">
+            </div>
+        </div>
+    </div>
+
+    <footer>
+      Conçu par <strong>Plateny AMOUSSOU</strong> – Professeur & Innovateur local<br>
+      📧 atizoun@gmail.com | 📞 01 97 74 40 35
+    </footer>
+  </div>
+
+  <div class="modal fade" id="modalModification" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title">Modifier l'appartement</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="formModification">
+            <input type="hidden" id="modifIndex"> 
+            
+            <div class="mb-3">
+              <label class="form-label">🏢 Nom de l'appartement</label>
+              <input type="text" id="modifNom" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">📅 Date d'intégration</label>
+              <input type="date" id="modifDate" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">💰 Coût mensuel (FCFA)</label>
+              <input type="number" id="modifCout" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">💵 Avance sur loyer (FCFA)</label>
+              <input type="number" id="modifAvance" class="form-control" required>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">🔑 Nom du propriétaire</label>
+              <input type="text" id="modifProprietaireNom" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">☎️ Contact du propriétaire</label>
+              <input type="tel" id="modifProprietaireContact" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">✍️ Modifier Signature Propriétaire (PNG)</label>
+                <input type="file" id="modifSignatureProprio" class="form-control" accept="image/png">
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">👤 Nom du locataire</label>
+              <input type="text" id="modifLocataire" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">📞 Téléphone</label>
+              <input type="tel" id="modifTelephone" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">✍️ Modifier Signature Locataire (PNG)</label>
+                <input type="file" id="modifSignatureLocataire" class="form-control" accept="image/png">
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="button" onclick="sauvegarderModification()" class="btn btn-success">Enregistrer les modifications</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    const form = document.getElementById('formAppartement');
+    const liste = document.getElementById('listeAppartements');
+    const toggleBtn = document.getElementById('toggleListe');
+    const modifModal = new bootstrap.Modal(document.getElementById('modalModification'));
+
+    // Fonction pour convertir une image en Base64
+    function encodeImageFileAsURL(element) {
+        return new Promise((resolve) => {
+            const file = element.files[0];
+            if (!file) resolve(null);
+            const reader = new FileReader();
+            reader.onloadend = function() {
+                resolve(reader.result);
+            }
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // --- FONCTIONS DE MAINTENANCE ---
+    function exporterDonnees() {
+        const data = {
+            appartements: JSON.parse(localStorage.getItem('appartements')) || [],
+            paiements: JSON.parse(localStorage.getItem('paiements')) || {}
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `smartlocation_backup_${new Date().toISOString().slice(0,10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    function importerDonnees(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (confirm("Attention : Cela écrasera toutes vos données actuelles. Continuer ?")) {
+                    if (data.appartements) localStorage.setItem('appartements', JSON.stringify(data.appartements));
+                    if (data.paiements) localStorage.setItem('paiements', JSON.stringify(data.paiements));
+                    alert("Restauration réussie ! La page va s'actualiser.");
+                    window.location.reload();
+                }
+            } catch (err) {
+                alert("Erreur lors de la lecture du fichier JSON.");
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    async function modifierAppartement(index) {
+        if (!confirm("Voulez-vous modifier les informations de cet appartement ?")) return;
+        const data = JSON.parse(localStorage.getItem('appartements')) || [];
+        const apt = data[index];
+        if (!apt) return alert("Appartement introuvable.");
+        document.getElementById('modifIndex').value = index;
+        document.getElementById('modifNom').value = apt.nom;
+        document.getElementById('modifDate').value = apt.dateEntree; 
+        document.getElementById('modifCout').value = apt.cout;
+        document.getElementById('modifAvance').value = apt.avance || 0;
+        document.getElementById('modifProprietaireNom').value = apt.proprietaireNom;
+        document.getElementById('modifProprietaireContact').value = apt.proprietaireContact;
+        document.getElementById('modifLocataire').value = apt.locataire;
+        document.getElementById('modifTelephone').value = apt.telephone;
+        modifModal.show();
+    }
+
+    async function sauvegarderModification() {
+        const index = document.getElementById('modifIndex').value;
+        const nouveauNom = document.getElementById('modifNom').value;
+        const nouvelleDate = document.getElementById('modifDate').value;
+        const nouveauCout = parseFloat(document.getElementById('modifCout').value);
+        const nouvelleAvance = parseFloat(document.getElementById('modifAvance').value);
+        const nouveauProprietaireNom = document.getElementById('modifProprietaireNom').value;
+        const nouveauProprietaireContact = document.getElementById('modifProprietaireContact').value;
+        const nouveauLocataire = document.getElementById('modifLocataire').value;
+        const nouveauTelephone = document.getElementById('modifTelephone').value;
+
+        const sigProprio = await encodeImageFileAsURL(document.getElementById('modifSignatureProprio'));
+        const sigLocataire = await encodeImageFileAsURL(document.getElementById('modifSignatureLocataire'));
+
+        if (isNaN(nouveauCout) || nouveauCout <= 0) {
+            alert("Veuillez entrer un coût mensuel valide.");
+            return;
+        }
+
+        let data = JSON.parse(localStorage.getItem('appartements')) || [];
+        if (data[index]) {
+            const oldData = data[index];
+            data[index] = {
+                nom: nouveauNom,
+                dateEntree: nouvelleDate, 
+                cout: nouveauCout,
+                avance: nouvelleAvance,
+                proprietaireNom: nouveauProprietaireNom,
+                proprietaireContact: nouveauProprietaireContact,
+                locataire: nouveauLocataire,
+                telephone: nouveauTelephone,
+                signatureProprio: sigProprio || oldData.signatureProprio || null,
+                signatureLocataire: sigLocataire || oldData.signatureLocataire || null
+            };
+            localStorage.setItem('appartements', JSON.stringify(data));
+            modifModal.hide();
+            chargerAppartements(); 
+        }
+    }
+
+    function chargerAppartements() {
+      const data = JSON.parse(localStorage.getItem('appartements')) || [];
+      liste.innerHTML = '';
+      data.forEach((apt, index) => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        const imgProprio = apt.signatureProprio ? `<img src="${apt.signatureProprio}" class="signature-preview">` : '<span class="text-muted small">Aucune signature</span>';
+        const imgLocataire = apt.signatureLocataire ? `<img src="${apt.signatureLocataire}" class="signature-preview">` : '<span class="text-muted small">Aucune signature</span>';
+        card.innerHTML = `
+          <div class="card-body">
+            <h5 class="card-title">${apt.nom}</h5>
+            <div class="row">
+              <div class="col-md-8">
+                <p class="card-text">
+                  📅 Intégré le : ${apt.dateEntree || apt.date}<br> 
+                  💰 Loyer : ${apt.cout} FCFA<br>
+                  💵 Avance : ${apt.avance || 0} FCFA<br>
+                  👤 Locataire : ${apt.locataire}
+                </p>
+              </div>
+              <div class="col-md-2 text-center"><small class="fw-bold">Proprio</small><br>${imgProprio}</div>
+              <div class="col-md-2 text-center"><small class="fw-bold">Locataire</small><br>${imgLocataire}</div>
+            </div>
+            <div class="mt-3">
+                <button class="btn btn-sm btn-outline-info btn-modifier" data-index="${index}">Modifier</button>
+                <button class="btn btn-sm btn-outline-danger btn-supprimer" data-index="${index}">Supprimer</button>
+            </div>
+          </div>`;
+        liste.appendChild(card);
+      });
+    }
+
+    function supprimerAppartement(index) {
+      if (!confirm("Êtes-vous sûr de vouloir supprimer cet appartement ?")) return;
+      const data = JSON.parse(localStorage.getItem('appartements')) || [];
+      data.splice(index, 1);
+      localStorage.setItem('appartements', JSON.stringify(data));
+      chargerAppartements();
+    }
+
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const sigProprio = await encodeImageFileAsURL(document.getElementById('signatureProprio'));
+      const sigLocataire = await encodeImageFileAsURL(document.getElementById('signatureLocataire'));
+      const nouveau = {
+        nom: document.getElementById('nom').value,
+        dateEntree: document.getElementById('date').value, 
+        cout: parseFloat(document.getElementById('cout').value),
+        avance: parseFloat(document.getElementById('avance').value),
+        proprietaireNom: document.getElementById('proprietaireNom').value,
+        proprietaireContact: document.getElementById('proprietaireContact').value,
+        locataire: document.getElementById('locataire').value,
+        telephone: document.getElementById('telephone').value,
+        signatureProprio: sigProprio,
+        signatureLocataire: sigLocataire
+      };
+      const data = JSON.parse(localStorage.getItem('appartements')) || [];
+      data.push(nouveau);
+      localStorage.setItem('appartements', JSON.stringify(data));
+      form.reset();
+      chargerAppartements();
+    });
+
+    liste.addEventListener('click', function(e) {
+        const indexAction = e.target.getAttribute('data-index');
+        if (e.target.classList.contains('btn-supprimer')) supprimerAppartement(parseInt(indexAction));
+        else if (e.target.classList.contains('btn-modifier')) modifierAppartement(parseInt(indexAction));
+    });
+
+    toggleBtn.addEventListener('click', () => {
+      liste.style.display = (liste.style.display === 'none') ? 'block' : 'none';
+      toggleBtn.textContent = (liste.style.display === 'none') ? 'Afficher les appartements' : 'Masquer les appartements';
+    });
+
+    window.onload = chargerAppartements;
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').then(reg => console.log('SW OK')).catch(err => console.log('SW KO'));
+      });
+    }
+  </script>
+</body>
+</html>

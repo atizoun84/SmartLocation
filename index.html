@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartLocation – Tableau de Bord</title>
+  
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#003366">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/609/609803.png">
+  
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background-color: #f0f2f5;
+      font-family: 'Segoe UI', sans-serif;
+      padding-top: 70px;
+    }
+    .navbar { background-color: #003366; }
+    .navbar-brand, .nav-link { color: white !important; }
+    
+    .stat-card {
+      border: none;
+      border-radius: 15px;
+      transition: transform 0.3s;
+      color: white;
+      cursor: pointer; /* Indique que c'est cliquable */
+    }
+    .stat-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+    .bg-income { background: linear-gradient(45deg, #00b09b, #96c93d); }
+    .bg-pending { background: linear-gradient(45deg, #f85032, #e73827); }
+    .bg-apartments { background: linear-gradient(45deg, #003366, #00509e); }
+    .bg-rate { background: linear-gradient(45deg, #fbc2eb, #a6c1ee); }
+
+    .card-title-custom { font-size: 0.9rem; text-transform: uppercase; opacity: 0.9; }
+    .card-value { font-size: 1.8rem; font-weight: bold; }
+
+    footer {
+      margin-top: 40px;
+      font-size: 0.9em;
+      text-align: center;
+      color: #666;
+      padding-bottom: 20px;
+    }
+    .alert-scroll {
+      max-height: 350px;
+      overflow-y: auto;
+    }
+    /* Style pour la modale raffinée */
+    .modal-header-pro {
+      background-color: #003366;
+      color: white;
+      border-bottom: 3px solid #ffcc00;
+    }
+    .detail-item {
+      border-bottom: 1px solid #eee;
+      padding: 10px 0;
+    }
+    .bien-detail {
+      font-size: 0.85rem;
+      border-left: 3px solid #003366;
+      margin-bottom: 10px;
+      padding-left: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar fixed-top navbar-expand-lg">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">SmartLocation</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon bg-light"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item"><a class="nav-link active" href="index.html">Tableau de bord</a></li>
+          <li class="nav-item"><a class="nav-link" href="config.html">Configuration</a></li>
+          <li class="nav-item"><a class="nav-link" href="gestion.html">Gestion</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h2 class="mb-4">📊 Tableau de Bord Immobilier</h2>
+
+    <div class="row g-3 mb-4">
+      <div class="col-md-3">
+        <div class="card stat-card bg-apartments p-3" onclick="afficherDetailsPro('Appartements')">
+          <div class="card-title-custom">Appartements</div>
+          <div class="card-value" id="totalApparts">0</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card stat-card bg-income p-3" onclick="afficherDetailsPro('Revenus')">
+          <div class="card-title-custom">Revenus Totaux</div>
+          <div class="card-value" id="totalRevenus">0 FCFA</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card stat-card bg-pending p-3" onclick="afficherDetailsPro('Impayés')">
+          <div class="card-title-custom">Impayés Estimés</div>
+          <div class="card-value" id="totalImpayes">0 FCFA</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card stat-card bg-rate p-3" style="color: #333;" onclick="afficherDetailsPro('Taux')">
+          <div class="card-title-custom">Taux de Recouvrement</div>
+          <div class="card-value" id="tauxRecouvrement">0%</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-7 mb-4">
+        <div class="card shadow-sm h-100">
+          <div class="card-body">
+            <h5 class="card-title">Répartition Financière par Appartement</h5>
+            <canvas id="chartFinances"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-5 mb-4">
+        <div class="card shadow-sm h-100">
+          <div class="card-header bg-white fw-bold text-danger">⚠️ Alertes : Retards de Paiement</div>
+          <div class="card-body alert-scroll">
+            <ul class="list-group list-group-flush" id="listeAlertes">
+              </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="modalDetailsPro" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+          <div class="modal-header modal-header-pro">
+            <h5 class="modal-title fw-bold" id="modalTitre">📜 RÉSUMÉ EXÉCUTIF</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body" id="modalCorps" style="max-height: 70vh; overflow-y: auto;">
+            </div>
+          <div class="modal-footer bg-light">
+            <button class="btn btn-success" onclick="copierResumeWhatsApp()">Copier pour WhatsApp</button>
+            <button class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      Conçu par <strong>Plateny AMOUSSOU</strong> – Professeur & Innovateur local<br>
+      📧 atizoun@gmail.com | 📞 01 97 74 40 35
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const modalPro = new bootstrap.Modal(document.getElementById('modalDetailsPro'));
+    let resumeTexteGlobal = "";
+
+    function formaterNombre(n) {
+        return new Intl.NumberFormat('fr-FR').format(n);
+    }
+
+    function calculerDonnees() {
+        const appartements = JSON.parse(localStorage.getItem('appartements')) || [];
+        const paiementsGlobal = JSON.parse(localStorage.getItem('paiements')) || {};
+        const maintenant = new Date();
+        const moisActuelStr = maintenant.toISOString().slice(0, 7);
+
+        let revenusTotaux = 0;
+        let impayesTotaux = 0;
+        let labelsApparts = [];
+        let dataPaye = [];
+        let dataRetard = [];
+
+        const listeAlertes = document.getElementById('listeAlertes');
+        listeAlertes.innerHTML = "";
+
+        appartements.forEach((apt, index) => {
+            labelsApparts.push(apt.nom);
+            const cout = parseFloat(apt.cout) || 0;
+            const paiementsApt = paiementsGlobal[index] || [];
+            
+            const totalPayeApt = paiementsApt.reduce((sum, p) => sum + parseFloat(p.montant), 0);
+            revenusTotaux += totalPayeApt;
+            dataPaye.push(totalPayeApt);
+
+            let retardsApt = 0;
+            if (apt.dateEntree) {
+                const start = new Date(apt.dateEntree);
+                let current = new Date(start.getFullYear(), start.getMonth(), 1);
+                
+                while (current.toISOString().slice(0, 7) < moisActuelStr) {
+                    const moisCle = current.toISOString().slice(0, 7);
+                    const dejaPaye = paiementsApt.some(p => p.mois === moisCle && p.type === "Paiement");
+                    
+                    if (!dejaPaye) {
+                        retardsApt += cout;
+                    }
+                    current.setMonth(current.getMonth() + 1);
+                }
+            }
+            impayesTotaux += retardsApt;
+            dataRetard.push(retardsApt);
+
+            if (retardsApt > 0) {
+                const li = document.createElement('li');
+                li.className = "list-group-item d-flex justify-content-between align-items-center";
+                li.innerHTML = `
+                    <div>
+                        <strong class="text-dark">${apt.nom}</strong><br>
+                        <small class="text-muted">${apt.locataire}</small>
+                    </div>
+                    <span class="badge bg-danger rounded-pill">${formaterNombre(retardsApt)} FCFA</span>
+                `;
+                listeAlertes.appendChild(li);
+            }
+        });
+
+        if (listeAlertes.innerHTML === "") {
+            listeAlertes.innerHTML = "<p class='text-center text-success p-3'>✅ Aucun retard détecté !</p>";
+        }
+
+        document.getElementById('totalApparts').textContent = appartements.length;
+        document.getElementById('totalRevenus').textContent = `${formaterNombre(revenusTotaux)} FCFA`;
+        document.getElementById('totalImpayes').textContent = `${formaterNombre(impayesTotaux)} FCFA`;
+        
+        const taux = revenusTotaux + impayesTotaux > 0 
+            ? Math.round((revenusTotaux / (revenusTotaux + impayesTotaux)) * 100) 
+            : 0;
+        document.getElementById('tauxRecouvrement').textContent = `${taux}%`;
+
+        genererGraphique(labelsApparts, dataPaye, dataRetard);
+    }
+
+    function afficherDetailsPro(type) {
+        const appartements = JSON.parse(localStorage.getItem('appartements')) || [];
+        const paiementsGlobal = JSON.parse(localStorage.getItem('paiements')) || {};
+        const maintenant = new Date();
+        const moisActuelStr = maintenant.toISOString().slice(0, 7);
+
+        const totalA = document.getElementById('totalApparts').textContent;
+        const totalR = document.getElementById('totalRevenus').textContent;
+        const totalI = document.getElementById('totalImpayes').textContent;
+        const tauxRec = document.getElementById('tauxRecouvrement').textContent;
+        const date = new Date().toLocaleDateString('fr-FR');
+
+        document.getElementById('modalTitre').innerText = `📑 BILAN : ${type.toUpperCase()}`;
+        
+        let detailBiensHtml = `<h6 class="mt-4 mb-3 fw-bold text-primary">DÉTAIL PAR BIEN :</h6>`;
+        let resumeWhatsAppBiens = `\n\n*DÉTAILS PAR BIEN :*`;
+
+        appartements.forEach((apt, index) => {
+            const paiementsApt = paiementsGlobal[index] || [];
+            const totalPayeApt = paiementsApt.reduce((sum, p) => sum + parseFloat(p.montant), 0);
+            
+            let retardsApt = 0;
+            if (apt.dateEntree) {
+                const start = new Date(apt.dateEntree);
+                let current = new Date(start.getFullYear(), start.getMonth(), 1);
+                while (current.toISOString().slice(0, 7) < moisActuelStr) {
+                    const moisCle = current.toISOString().slice(0, 7);
+                    const dejaPaye = paiementsApt.some(p => p.mois === moisCle && p.type === "Paiement");
+                    if (!dejaPaye) retardsApt += parseFloat(apt.cout);
+                    current.setMonth(current.getMonth() + 1);
+                }
+            }
+
+            detailBiensHtml += `
+                <div class="bien-detail">
+                    <strong>${apt.nom}</strong> (${apt.locataire})<br>
+                    <span class="text-success">Payé: ${formaterNombre(totalPayeApt)} F</span> | 
+                    <span class="text-danger">Retard: ${formaterNombre(retardsApt)} F</span>
+                </div>
+            `;
+            resumeWhatsAppBiens += `\n🏠 ${apt.nom}: P: ${formaterNombre(totalPayeApt)} / R: ${formaterNombre(retardsApt)}`;
+        });
+
+        const htmlContent = `
+            <div class="text-center mb-3">
+                <h6 class="text-muted">SmartLocation - État au ${date}</h6>
+                <hr>
+            </div>
+            <div class="detail-item d-flex justify-content-between">
+                <span>Nombre d'Appartements :</span> <strong>${totalA}</strong>
+            </div>
+            <div class="detail-item d-flex justify-content-between">
+                <span>Encaissements Totaux :</span> <strong class="text-success">${totalR}</strong>
+            </div>
+            <div class="detail-item d-flex justify-content-between">
+                <span>Créances (Retards) :</span> <strong class="text-danger">${totalI}</strong>
+            </div>
+            <div class="detail-item d-flex justify-content-between bg-light p-2 mt-2">
+                <span>Taux de Recouvrement :</span> <strong class="text-primary">${tauxRec}</strong>
+            </div>
+            ${detailBiensHtml}
+        `;
+
+        resumeTexteGlobal = `*BILAN FINANCIER SMARTLOCATION*\n📅 Date: ${date}\n🏢 Appartements: ${totalA}\n💰 Revenus: ${totalR}\n⚠️ Retards: ${totalI}\n📈 Taux de Recouvrement: ${tauxRec}${resumeWhatsAppBiens}`;
+
+        document.getElementById('modalCorps').innerHTML = htmlContent;
+        modalPro.show();
+    }
+
+    function copierResumeWhatsApp() {
+        navigator.clipboard.writeText(resumeTexteGlobal).then(() => {
+            alert("Bilan copié ! Vous pouvez maintenant le coller dans WhatsApp.");
+        });
+    }
+
+    function genererGraphique(labels, paye, retard) {
+        const ctx = document.getElementById('chartFinances').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Revenus Encaissés',
+                        data: paye,
+                        backgroundColor: '#00b09b',
+                        borderRadius: 5
+                    },
+                    {
+                        label: 'Retards (Impayés)',
+                        data: retard,
+                        backgroundColor: '#f85032',
+                        borderRadius: 5
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: true, ticks: { callback: value => value.toLocaleString() + ' F' } }
+                },
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+    }
+
+    window.onload = calculerDonnees;
+
+    // Enregistrement du Service Worker pour la PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').then(registration => {
+          console.log('SW registered: ', registration);
+        }).catch(registrationError => {
+          console.log('SW registration failed: ', registrationError);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
