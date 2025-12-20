@@ -85,55 +85,30 @@
         overflow-y: auto;
     }
 
-    /* MODIFICATION : DETECTION ROBUSTE DU CONTENU POUR IMPRESSION PROFESSIONNELLE */
+    /* MODIFICATION : CONFIGURATION POUR L'ISOLATION DE L'IMPRESSION */
     @media print {
-        /* Masquer tout le reste de la page */
-        body * {
-            visibility: hidden;
+        body > * {
+            display: none !important;
         }
-        /* Détecter et afficher uniquement la modale et ses enfants */
-        .modal.show, .modal.show * {
-            visibility: visible;
+        #printArea, #printArea * {
+            display: block !important;
+            visibility: visible !important;
         }
-        /* Positionner la modale pour qu'elle occupe toute la page imprimée */
-        .modal.show {
+        #printArea {
             position: absolute;
             left: 0;
             top: 0;
             width: 100%;
-            margin: 0;
-            padding: 0;
-            visibility: visible;
-            display: block !important;
         }
-        .modal-dialog {
-            max-width: 100% !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-        .modal-content {
-            border: none !important;
-            box-shadow: none !important;
-        }
-        /* Supprimer les éléments d'interface inutiles sur le papier */
-        .modal-footer, .modal-header .btn-close, .no-print {
-            display: none !important;
-        }
-        /* Forcer le rendu des couleurs et fonds de tableaux */
         .table-secondary {
             background-color: #e2e3e5 !important;
             -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
         }
         .table-dark th {
             background-color: #003366 !important;
             color: white !important;
             -webkit-print-color-adjust: exact;
         }
-        /* Empêcher les coupures mal placées */
-        tr { page-break-inside: avoid; }
-        .signature-img { page-break-inside: avoid; }
     }
     
     .signature-img {
@@ -150,6 +125,8 @@
   </style>
 </head>
 <body>
+
+  <div id="printArea"></div>
 
   <nav class="navbar fixed-top navbar-expand-lg">
     <div class="container-fluid">
@@ -245,7 +222,7 @@
               </div>
           <div class="modal-footer no-print">
             <button class="btn btn-info" onclick="copierRapportWhatsApp()">Copier WhatsApp</button>
-            <button class="btn btn-outline-dark" onclick="window.print()">Imprimer Rapport Professionnel</button>
+            <button class="btn btn-outline-dark" onclick="imprimerParIsolation()">Imprimer Rapport Professionnel</button>
             <button class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
           </div>
         </div>
@@ -516,7 +493,7 @@
         } else { lignesPaiement = '<tr><td colspan="5" class="text-center">Aucun paiement</td></tr>'; }
         
         const content = `
-            <div class="p-4 border border-dark">
+            <div class="p-4 border border-dark bg-white">
                 <div class="text-center mb-4">
                     <h3 class="mb-0 text-uppercase fw-bold" style="color:#003366;">RAPPORT FINANCIER DE LOCATION</h3>
                     <hr class="border-dark">
@@ -567,6 +544,21 @@
         
         document.getElementById('rapportContent').innerHTML = content;
         modalRapport.show();
+    }
+
+    // MODIFICATION : NOUVELLE LOGIQUE D'IMPRESSION PAR ISOLATION
+    function imprimerParIsolation() {
+        const rapportHTML = document.getElementById('rapportContent').innerHTML;
+        const printArea = document.getElementById('printArea');
+        
+        // On copie le contenu dans la zone dédiée
+        printArea.innerHTML = rapportHTML;
+        
+        // On lance l'impression (le CSS @media print masquera tout sauf printArea)
+        window.print();
+        
+        // On nettoie la zone après l'impression
+        printArea.innerHTML = '';
     }
 
     function copierRapportWhatsApp() {
