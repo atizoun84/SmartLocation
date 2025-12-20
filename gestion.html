@@ -85,20 +85,40 @@
         overflow-y: auto;
     }
 
-    /* MODIFICATION : CONFIGURATION POUR L'ISOLATION DE L'IMPRESSION */
+    /* MODIFICATION : LOGIQUE D'IMPRESSION ET MISE EN FORME */
     @media print {
+        /* Masquer tout sauf la zone d'impression */
         body > * {
             display: none !important;
         }
-        #printArea, #printArea * {
+        #printArea {
             display: block !important;
             visibility: visible !important;
-        }
-        #printArea {
             position: absolute;
             left: 0;
             top: 0;
             width: 100%;
+            padding: 10px;
+            background: white;
+            font-size: 10pt !important; /* Taille de police réduite */
+        }
+        #printArea * {
+            display: block; /* Force l'affichage */
+            visibility: visible !important;
+        }
+        /* Correction du tableau pour l'impression */
+        #printArea table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            display: table !important; /* Force le comportement de tableau */
+        }
+        #printArea thead { display: table-header-group !important; }
+        #printArea tbody { display: table-row-group !important; }
+        #printArea tr { display: table-row !important; page-break-inside: avoid; }
+        #printArea th, #printArea td { 
+            display: table-cell !important; 
+            padding: 5px !important;
+            font-size: 9pt !important;
         }
         .table-secondary {
             background-color: #e2e3e5 !important;
@@ -109,19 +129,23 @@
             color: white !important;
             -webkit-print-color-adjust: exact;
         }
+        .row { display: flex !important; flex-wrap: nowrap !important; }
+        .col-6 { width: 50% !important; }
+        .text-end { text-align: right !important; }
     }
     
     .signature-img {
-      max-width: 180px;
-      max-height: 100px;
+      max-width: 150px;
+      max-height: 80px;
       display: block;
-      margin: 10px auto;
+      margin: 5px auto;
     }
     #zoneAvancesDisponibles {
       background-color: #e7f3ff;
       border: 1px solid #b3d7ff;
       border-radius: 8px;
     }
+    #printArea { display: none; } /* Caché à l'écran */
   </style>
 </head>
 <body>
@@ -488,56 +512,51 @@
             dataPaiements.sort((a, b) => b.mois.localeCompare(a.mois)).forEach(p => {
                 const datePaye = p.dateEnregistrement ? new Date(p.dateEnregistrement).toLocaleDateString() : 'N/A';
                 const moisTexte = p.type === 'Avance' ? "Avance" : formaterMoisTexte(p.mois);
-                lignesPaiement += `<tr><td>${moisTexte}</td><td>${p.type}</td><td>${datePaye}</td><td class="text-end fw-bold" style="color:#0d6efd;">${p.montant.toLocaleString()} FCFA</td><td>${p.observation || '-'}</td></tr>`;
+                lignesPaiement += `<tr><td>${moisTexte}</td><td>${p.type}</td><td>${datePaye}</td><td class="text-end fw-bold">${p.montant.toLocaleString()} FCFA</td><td>${p.observation || '-'}</td></tr>`;
             });
         } else { lignesPaiement = '<tr><td colspan="5" class="text-center">Aucun paiement</td></tr>'; }
         
         const content = `
-            <div class="p-4 border border-dark bg-white">
-                <div class="text-center mb-4">
-                    <h3 class="mb-0 text-uppercase fw-bold" style="color:#003366;">RAPPORT FINANCIER DE LOCATION</h3>
-                    <hr class="border-dark">
+            <div style="background: white; color: black; padding: 5px;">
+                <div class="text-center mb-3">
+                    <h5 class="mb-0 fw-bold" style="color:#003366;">RAPPORT FINANCIER</h5>
+                    <hr style="margin: 5px 0;">
                 </div>
-                <div class="row mb-3">
+                <div class="row mb-2">
                     <div class="col-6">
-                        <h6 class="fw-bold">PROPRIÉTAIRE :</h6>
-                        <p class="mb-1">${apt.proprietaireNom}</p>
-                        <p class="small text-muted">📞 ${apt.proprietaireContact || 'N/A'}</p>
+                        <small class="fw-bold">PROPRIÉTAIRE :</small>
+                        <p class="mb-0 small">${apt.proprietaireNom}</p>
                     </div>
                     <div class="col-6 text-end">
-                        <h6 class="fw-bold">LOCATAIRE :</h6>
-                        <p class="mb-1">${apt.locataire}</p>
-                        <p class="small text-muted">📞 ${apt.telephone || apt.locataireContact || 'N/A'}</p>
+                        <small class="fw-bold">LOCATAIRE :</small>
+                        <p class="mb-0 small">${apt.locataire}</p>
                     </div>
                 </div>
-                <table class="table table-sm table-bordered mb-4">
-                    <thead>
-                        <tr style="background-color:#003366; color:white;"><th>BIEN CONCERNÉ</th><td>${apt.nom}</td></tr>
-                        <tr><th>LOYER MENSUEL</th><td class="fw-bold">${apt.cout.toLocaleString()} FCFA</td></tr>
-                    </thead>
+                <table class="table table-sm table-bordered mb-3">
+                    <tr style="background-color:#eee;"><td><strong>BIEN</strong></td><td>${apt.nom}</td></tr>
+                    <tr><td><strong>LOYER</strong></td><td class="fw-bold">${apt.cout.toLocaleString()} FCFA</td></tr>
                 </table>
-                <h6 class="fw-bold text-uppercase border-bottom pb-1">Détails des Versements</h6>
-                <table class="table table-sm table-striped table-bordered mb-4">
+                <table class="table table-sm table-striped table-bordered mb-3" style="width:100%;">
                     <thead>
-                        <tr class="table-secondary text-center">
-                            <th>Mois / Objet</th><th>Type</th><th>Date Enreg.</th><th>Montant</th><th>Note</th>
+                        <tr class="table-secondary">
+                            <th>Objet</th><th>Type</th><th>Date</th><th>Montant</th><th>Note</th>
                         </tr>
                     </thead>
                     <tbody>${lignesPaiement}</tbody>
                 </table>
-                <div class="bg-light p-3 border mb-4">
+                <div class="bg-light p-2 border mb-3">
                     <div class="row text-center">
-                        <div class="col-4 fw-bold" style="color:#0d6efd;">CUMUL PAYÉ: <br>${totalPaye.toLocaleString()} FCFA</div>
-                        <div class="col-4 fw-bold" style="color:#dc3545;">TOTAL RETARD: <br>${totalRetard.toLocaleString()} FCFA</div>
-                        <div class="col-4 fw-bold">ÉDITÉ LE: <br>${new Date().toLocaleDateString()}</div>
+                        <div class="col-4 small"><strong>PAYÉ</strong><br>${totalPaye.toLocaleString()}</div>
+                        <div class="col-4 small"><strong>RETARD</strong><br>${totalRetard.toLocaleString()}</div>
+                        <div class="col-4 small"><strong>DATE</strong><br>${new Date().toLocaleDateString()}</div>
                     </div>
                 </div>
-                <div class="row mt-5">
+                <div class="row">
                     <div class="col-6 text-center">
-                        <span class="fw-bold border-bottom">SIGNATURE LOCATAIRE</span><br>${sigLocataireImg}
+                        <small class="fw-bold">SIGN. LOCATAIRE</small><br>${sigLocataireImg}
                     </div>
                     <div class="col-6 text-center">
-                        <span class="fw-bold border-bottom">SIGNATURE PROPRIÉTAIRE</span><br>${sigProprioImg}
+                        <small class="fw-bold">SIGN. PROPRIO</small><br>${sigProprioImg}
                     </div>
                 </div>
             </div>`;
@@ -546,19 +565,19 @@
         modalRapport.show();
     }
 
-    // MODIFICATION : NOUVELLE LOGIQUE D'IMPRESSION PAR ISOLATION
+    // MODIFICATION : FONCTION ROBUSTE POUR ANDROID ET MISE EN FORME
     function imprimerParIsolation() {
         const rapportHTML = document.getElementById('rapportContent').innerHTML;
         const printArea = document.getElementById('printArea');
         
-        // On copie le contenu dans la zone dédiée
         printArea.innerHTML = rapportHTML;
         
-        // On lance l'impression (le CSS @media print masquera tout sauf printArea)
-        window.print();
-        
-        // On nettoie la zone après l'impression
-        printArea.innerHTML = '';
+        // Timeout pour assurer le rendu complet sur mobile avant impression
+        setTimeout(() => {
+            window.print();
+            // Nettoyage après un léger délai pour que le système d'impression capture tout
+            setTimeout(() => { printArea.innerHTML = ''; }, 1000);
+        }, 500);
     }
 
     function copierRapportWhatsApp() {
