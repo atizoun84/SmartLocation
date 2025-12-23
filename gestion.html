@@ -308,7 +308,8 @@
             start = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
         }
         
-        for (let i = 0; i < 48; i++) {
+        // MODIFICATION : 50 ans = 50 * 12 = 600 mois
+        for (let i = 0; i < 600; i++) {
             const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
             const value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
             const label = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }).toUpperCase();
@@ -472,7 +473,6 @@
         }
     }
 
-    // --- FONCTION MODALE FACTURE ---
     function ouvrirFactureIndividuelle(aptIndex, paiementId) {
         const appartements = JSON.parse(localStorage.getItem('appartements')) || [];
         const paiements = JSON.parse(localStorage.getItem('paiements')) || {};
@@ -623,7 +623,6 @@
       
       historique.innerHTML = '';
       
-      // Filtrage par date si une date est saisie
       if (filterDate) {
           data = data.filter(p => p.dateEnregistrement.startsWith(filterDate));
       }
@@ -640,7 +639,6 @@
       dataTriee.forEach(p => {
         const row = document.createElement('tr');
         row.className = "clickable-row";
-        // Clic sur la ligne pour ouvrir la facture
         row.onclick = (e) => {
             if(e.target.tagName !== 'BUTTON') ouvrirFactureIndividuelle(index, p.id);
         };
