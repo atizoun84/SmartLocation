@@ -90,8 +90,8 @@
     }
     /* Style pour l'aperçu des signatures dans le rapport */
     .signature-img {
-      max-width: 150px;
-      max-height: 80px;
+      max-width: 180px;
+      max-height: 100px;
       display: block;
       margin: 10px auto;
     }
@@ -101,9 +101,6 @@
       border: 1px solid #b3d7ff;
       border-radius: 8px;
     }
-    /* Style pour les lignes cliquables de l'historique */
-    .clickable-row { cursor: pointer; transition: background 0.2s; }
-    .clickable-row:hover { background-color: #e9ecef !important; }
   </style>
 </head>
 <body>
@@ -198,7 +195,8 @@
             <h5 class="modal-title font-monospace">ÉTAT FINANCIER DÉTAILLÉ</h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
           </div>
-          <div class="modal-body" id="rapportContent"></div>
+          <div class="modal-body" id="rapportContent">
+              </div>
           <div class="modal-footer no-print">
             <button class="btn btn-info" onclick="copierRapportWhatsApp()">Copier WhatsApp</button>
             <button class="btn btn-outline-dark" onclick="window.print()">Imprimer Rapport</button>
@@ -208,30 +206,8 @@
       </div>
     </div>
 
-    <div class="modal fade" id="modalFacture" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header bg-primary text-white">
-            <h5 class="modal-title">📄 REÇU DE PAIEMENT</h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body" id="factureContent"></div>
-          <div class="modal-footer no-print">
-            <button class="btn btn-dark" onclick="window.print()">🖨️ Imprimer le Reçu</button>
-            <button class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <div id="historiqueSection" class="mt-4">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-          <h4 class="text-primary mb-0">📋 Historique des paiements</h4>
-          <div class="d-flex align-items-center">
-              <label class="me-2 small fw-bold">Filtrer par date :</label>
-              <input type="date" id="searchDate" class="form-control form-control-sm" style="width: 150px;" oninput="afficherHistorique()">
-          </div>
-      </div>
+      <h4 class="text-primary">📋 Historique des paiements</h4>
       <div class="table-responsive"> 
         <table class="table table-bordered table-striped">
           <thead>
@@ -268,9 +244,7 @@
     const montantCumulePayeDisplay = document.getElementById('montantCumulePaye');
     const observationInput = document.getElementById('observation');
     const navbarDate = document.getElementById('navbarDate');
-    const searchDateInput = document.getElementById('searchDate');
     const modalRapport = new bootstrap.Modal(document.getElementById('modalRapport'));
-    const modalFacture = new bootstrap.Modal(document.getElementById('modalFacture'));
     const zoneAvances = document.getElementById('zoneAvancesDisponibles');
     const infoMoisAvance = document.getElementById('infoMoisAvance');
 
@@ -308,8 +282,7 @@
             start = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
         }
         
-        // MODIFICATION : 50 ans = 50 * 12 = 600 mois
-        for (let i = 0; i < 600; i++) {
+        for (let i = 0; i < 48; i++) {
             const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
             const value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
             const label = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }).toUpperCase();
@@ -473,60 +446,6 @@
         }
     }
 
-    function ouvrirFactureIndividuelle(aptIndex, paiementId) {
-        const appartements = JSON.parse(localStorage.getItem('appartements')) || [];
-        const paiements = JSON.parse(localStorage.getItem('paiements')) || {};
-        const apt = appartements[aptIndex];
-        const p = paiements[aptIndex].find(x => x.id == paiementId);
-        
-        if (!apt || !p) return;
-
-        const datePaiement = new Date(p.dateEnregistrement).toLocaleDateString('fr-FR');
-        const moisFacture = p.type === 'Avance' ? "Avance sur loyer" : formaterMoisTexte(p.mois);
-        const sigProprioImg = apt.signatureProprio ? `<img src="${apt.signatureProprio}" class="signature-img">` : '<p class="text-muted small">Non signée</p>';
-        const sigLocataireImg = apt.signatureLocataire ? `<img src="${apt.signatureLocataire}" class="signature-img">` : '<p class="text-muted small">Non signée</p>';
-
-        const html = `
-            <div class="border p-4 bg-white" id="facturePrintable">
-                <div class="text-center mb-3">
-                    <h4 class="text-primary fw-bold">SMART LOCATION</h4>
-                    <p class="small text-muted mb-0">Reçu de paiement officiel</p>
-                    <hr>
-                </div>
-                <div class="row small mb-3">
-                    <div class="col-6"><strong>N° Reçu :</strong> #${Math.floor(p.id / 1000000)}</div>
-                    <div class="col-6 text-end"><strong>Date :</strong> ${datePaiement}</div>
-                </div>
-                <div class="mb-3">
-                    <p class="mb-1"><strong>Propriétaire :</strong> ${apt.proprietaireNom}</p>
-                    <p class="mb-1"><strong>Locataire :</strong> ${apt.locataire}</p>
-                    <p class="mb-1"><strong>Appartement :</strong> ${apt.nom}</p>
-                </div>
-                <table class="table table-bordered table-sm">
-                    <thead class="table-light">
-                        <tr><th>Désignation</th><th class="text-end">Montant</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr><td>Loyer : ${moisFacture}</td><td class="text-end fw-bold">${p.montant.toLocaleString()} FCFA</td></tr>
-                    </tbody>
-                </table>
-                <div class="bg-light p-2 mb-3 text-center">
-                    <span class="fw-bold">Arrêté à la somme de : ${p.montant.toLocaleString()} FCFA</span>
-                </div>
-                <div class="row mt-4">
-                    <div class="col-6 text-center">
-                        <span class="small fw-bold">Signature Locataire</span><br>${sigLocataireImg}
-                    </div>
-                    <div class="col-6 text-center">
-                        <span class="small fw-bold">Signature Propriétaire</span><br>${sigProprioImg}
-                    </div>
-                </div>
-            </div>
-        `;
-        document.getElementById('factureContent').innerHTML = html;
-        modalFacture.show();
-    }
-
     function genererRapportGeneral() {
         const index = select.value;
         const appartements = JSON.parse(localStorage.getItem('appartements')) || [];
@@ -615,35 +534,30 @@
 
     function afficherHistorique() {
       const index = select.value;
-      const filterDate = searchDateInput.value;
       const appartements = JSON.parse(localStorage.getItem('appartements')) || [];
       const aptNom = appartements[index]?.nom || "Inconnu";
       const paiements = JSON.parse(localStorage.getItem('paiements')) || {};
-      let data = paiements[index] || [];
+      const data = paiements[index] || [];
       
       historique.innerHTML = '';
       
-      if (filterDate) {
-          data = data.filter(p => p.dateEnregistrement.startsWith(filterDate));
-      }
-
       if (data.length === 0) {
-        historique.innerHTML = '<tr><td colspan="6" class="text-center text-muted italic">Aucun historique correspondant</td></tr>';
+        historique.innerHTML = '<tr><td colspan="6" class="text-center text-muted italic">Aucun historique pour cet appartement</td></tr>';
         return;
       }
 
+      // Tri des données (plus récent en haut)
       const dataTriee = [...data].sort((a, b) => b.mois.localeCompare(a.mois));
+      
+      // Récupération du mois le plus récent payé pour marquer le "Avant dernier mois payé"
       const paiementsSeuls = dataTriee.filter(p => p.type === 'Paiement');
       const dernierMoisValeur = paiementsSeuls.length > 0 ? paiementsSeuls[0].mois : null;
 
       dataTriee.forEach(p => {
         const row = document.createElement('tr');
-        row.className = "clickable-row";
-        row.onclick = (e) => {
-            if(e.target.tagName !== 'BUTTON') ouvrirFactureIndividuelle(index, p.id);
-        };
-
         let moisAffiche = p.type === 'Avance' ? "Versement d'avance" : formaterMoisTexte(p.mois);
+        
+        // MODIFICATION : Écrire "Dernier mois payé" pour le mois le plus élevé
         if (p.type === 'Paiement' && p.mois === dernierMoisValeur) {
             moisAffiche += ' <strong class="text-success">(Dernier mois payé)</strong>';
         }
@@ -654,7 +568,7 @@
             <td>${p.montant.toLocaleString()} FCFA</td>
             <td>${p.type}</td>
             <td>${p.observation}</td>
-            <td class="no-print"><button class="btn btn-sm btn-danger" onclick="supprimerPaiement(${index}, ${p.id})">Suppr</button></td>
+            <td><button class="btn btn-sm btn-danger" onclick="supprimerPaiement(${index}, ${p.id})">Suppr</button></td>
         `;
         historique.appendChild(row);
       });
@@ -681,25 +595,6 @@
         historiqueSection.style.display = 'none';
         toggleHistoriqueBtn.textContent = "Afficher l'historique";
       }
-    }
-
-    function toggleModificationCout() {
-        if(coutMensuelAffichage.readOnly) {
-            coutMensuelAffichage.readOnly = false;
-            btnModifierCout.textContent = "Appliquer";
-            btnModifierCout.className = "btn btn-success";
-        } else {
-            const index = select.value;
-            const data = JSON.parse(localStorage.getItem('appartements')) || [];
-            if(data[index]) {
-                data[index].cout = parseFloat(coutMensuelAffichage.value);
-                localStorage.setItem('appartements', JSON.stringify(data));
-                coutMensuelAffichage.readOnly = true;
-                btnModifierCout.textContent = "Modifier";
-                btnModifierCout.className = "btn btn-info";
-                afficherDetailsAppartement();
-            }
-        }
     }
 
     select.addEventListener('change', () => { 
