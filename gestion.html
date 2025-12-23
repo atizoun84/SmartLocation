@@ -79,29 +79,35 @@
         max-height: 70vh;
         overflow-y: auto;
     }
-    /* Style Spécifique Rapport Impression */
+    
+    /* MODIFICATION : STYLE D'IMPRESSION PROFESSIONNEL */
     @media print {
-        body { padding-top: 0 !important; background-color: white !important; }
+        body * { visibility: hidden; }
+        #printArea, #printArea * { visibility: visible; }
+        #printArea {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            font-size: 10pt !important;
+        }
         .modal-footer, .navbar, .btn-close, .alert, .no-print { display: none !important; }
-        .modal-content { border: none !important; box-shadow: none !important; }
-        .container { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
-        .print-only { display: block !important; }
-        .table-secondary { background-color: #e2e3e5 !important; -webkit-print-color-adjust: exact; }
+        table { width: 100% !important; border-collapse: collapse !important; }
+        th, td { border: 1px solid #000 !important; padding: 5px !important; }
+        .signature-img { max-width: 120px !important; }
     }
-    /* Style pour l'aperçu des signatures dans le rapport */
+
     .signature-img {
       max-width: 150px;
       max-height: 80px;
       display: block;
       margin: 10px auto;
     }
-    /* Nouveau style pour les avances */
     #zoneAvancesDisponibles {
       background-color: #e7f3ff;
       border: 1px solid #b3d7ff;
       border-radius: 8px;
     }
-    /* Style pour les lignes cliquables de l'historique */
     .clickable-row { cursor: pointer; transition: background 0.2s; }
     .clickable-row:hover { background-color: #e9ecef !important; }
   </style>
@@ -188,7 +194,6 @@
       </div>
       <button onclick="genererRapportGeneral()" class="btn btn-primary">📊 Rapport Général de Location</button>
       <button id="toggleHistoriqueBtn" class="btn btn-outline-secondary">Afficher l'historique</button>
-      <button onclick="annulerModification()" class="btn btn-warning d-none" id="btnAnnulerModification">Annuler Modification</button>
     </div>
 
     <div class="modal fade" id="modalRapport" tabindex="-1">
@@ -198,10 +203,12 @@
             <h5 class="modal-title font-monospace">ÉTAT FINANCIER DÉTAILLÉ</h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
           </div>
-          <div class="modal-body" id="rapportContent"></div>
+          <div class="modal-body" id="printAreaRapport">
+              <div id="rapportContent"></div>
+          </div>
           <div class="modal-footer no-print">
             <button class="btn btn-info" onclick="copierRapportWhatsApp()">Copier WhatsApp</button>
-            <button class="btn btn-outline-dark" onclick="window.print()">Imprimer Rapport</button>
+            <button class="btn btn-outline-dark" onclick="lancerImpression('rapportContent')">Imprimer Rapport</button>
             <button class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
           </div>
         </div>
@@ -215,14 +222,18 @@
             <h5 class="modal-title">📄 REÇU DE PAIEMENT</h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
           </div>
-          <div class="modal-body" id="factureContent"></div>
+          <div class="modal-body">
+              <div id="factureContent"></div>
+          </div>
           <div class="modal-footer no-print">
-            <button class="btn btn-dark" onclick="window.print()">🖨️ Imprimer le Reçu</button>
+            <button class="btn btn-dark" onclick="lancerImpression('factureContent')">🖨️ Imprimer le Reçu</button>
             <button class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
           </div>
         </div>
       </div>
     </div>
+
+    <div id="printArea" style="display:none;"></div>
 
     <div id="historiqueSection" class="mt-4">
       <div class="d-flex justify-content-between align-items-center mb-2">
@@ -258,10 +269,6 @@
     const nomProprietaireAffichage = document.getElementById('nomProprietaireAffichage'); 
     const contactProprietaireAffichage = document.getElementById('contactProprietaireAffichage'); 
     const coutMensuelAffichage = document.getElementById('coutMensuelAffichage');
-    const btnModifierCout = document.getElementById('btnModifierCout');
-    const btnValiderPaiement = document.getElementById('btnValiderPaiement');
-    const btnAnnulerModification = document.getElementById('btnAnnulerModification');
-    const paiementIdModification = document.getElementById('paiementIdModification');
     const moisInput = document.getElementById('mois');
     const montantInput = document.getElementById('montant');
     const montantRetardsDisplay = document.getElementById('montantRetards');
@@ -273,6 +280,21 @@
     const modalFacture = new bootstrap.Modal(document.getElementById('modalFacture'));
     const zoneAvances = document.getElementById('zoneAvancesDisponibles');
     const infoMoisAvance = document.getElementById('infoMoisAvance');
+
+    // MODIFICATION : FONCTION D'IMPRESSION AVEC DELAI DE SECURITE (ANDROID COMPATIBLE)
+    function lancerImpression(divId) {
+        const content = document.getElementById(divId).innerHTML;
+        const printArea = document.getElementById('printArea');
+        printArea.innerHTML = content;
+        printArea.style.display = 'block';
+
+        // Délai de 500ms pour s'assurer que le DOM est rendu avant l'appel système d'impression
+        setTimeout(() => {
+            window.print();
+            printArea.style.display = 'none';
+            printArea.innerHTML = '';
+        }, 500);
+    }
 
     function mettreAJourNavbarDate() {
         const d = new Date();
@@ -293,11 +315,9 @@
         const maintenant = new Date();
         const moisActuelStr = maintenant.toISOString().slice(0, 7);
         let start;
-        
         const paiementsGlobal = JSON.parse(localStorage.getItem('paiements')) || {};
         const paiementsApt = paiementsGlobal[indexAppartement] || [];
         const cout = parseFloat(coutMensuelAffichage.value) || 0;
-        
         let totalRetards = 0;
         let totalDejaPaye = 0;
 
@@ -308,15 +328,12 @@
             start = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
         }
         
-        // MODIFICATION : 50 ans = 50 * 12 = 600 mois
         for (let i = 0; i < 600; i++) {
             const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
             const value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
             const label = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }).toUpperCase();
-            
             const pFound = paiementsApt.find(p => p.mois === value && p.type === 'Paiement');
             const estDansLePasse = value < moisActuelStr;
-            
             const option = document.createElement('option');
             option.value = value;
 
@@ -329,9 +346,7 @@
                 option.style.color = "#dc3545";
                 option.style.fontWeight = "bold";
                 totalRetards += cout;
-            } else {
-                option.textContent = label;
-            }
+            } else { option.textContent = label; }
             moisInput.appendChild(option);
         }
         
@@ -340,20 +355,13 @@
         const dataApts = JSON.parse(localStorage.getItem('appartements')) || [];
         const avanceInitiale = parseFloat(dataApts[indexAppartement]?.avance) || 0;
         const soldeAvanceDisponible = (totalAvancesGlobal + avanceInitiale) - totalLoyerPayeEquivalent;
-        
         totalDejaPaye += totalAvancesGlobal;
 
         if (soldeAvanceDisponible >= cout) {
             const nbMoisPossibles = Math.floor(soldeAvanceDisponible / cout);
-            const resteAvance = soldeAvanceDisponible % cout;
             zoneAvances.classList.remove('d-none');
-            infoMoisAvance.innerHTML = `Cette avance peut couvrir <strong>${nbMoisPossibles} mois</strong> de loyer.<br>Reliquat après paiement : <strong>${resteAvance.toLocaleString()} FCFA</strong>`;
-        } else if (soldeAvanceDisponible > 0) {
-            zoneAvances.classList.remove('d-none');
-            infoMoisAvance.innerHTML = `Solde d'avance restant : <strong>${soldeAvanceDisponible.toLocaleString()} FCFA</strong> (Insuffisant pour 1 mois complet).`;
-        } else {
-            zoneAvances.classList.add('d-none');
-        }
+            infoMoisAvance.innerHTML = `Avance couvre <strong>${nbMoisPossibles} mois</strong>.`;
+        } else { zoneAvances.classList.add('d-none'); }
 
         montantRetardsDisplay.value = `${totalRetards.toLocaleString('fr-FR')} FCFA`;
         montantCumulePayeDisplay.value = `${totalDejaPaye.toLocaleString('fr-FR')} FCFA`;
@@ -368,7 +376,6 @@
         const avanceInitiale = parseFloat(dataApt[index]?.avance) || 0;
         const totalAvancesGlobal = paiementsApt.filter(p => p.type === 'Avance').reduce((sum, p) => sum + parseFloat(p.montant), 0);
         const totalLoyerPayeEquivalent = paiementsApt.filter(p => p.type === 'Paiement' && p.observation.includes("Payé via Avance")).length * cout;
-        
         let soldeAvance = (totalAvancesGlobal + avanceInitiale) - totalLoyerPayeEquivalent;
         let moisCoches = 0;
         Array.from(moisInput.options).forEach(opt => {
@@ -378,13 +385,7 @@
                 moisCoches++;
             }
         });
-        if (moisCoches > 0) {
-            observationInput.value = "Payé via Avance";
-            calculerCumul();
-            alert(`${moisCoches} mois sélectionnés.`);
-        } else {
-            alert("Solde insuffisant ou aucun mois de retard trouvé.");
-        }
+        if (moisCoches > 0) { observationInput.value = "Payé via Avance"; calculerCumul(); }
     }
 
     function calculerCumul() {
@@ -396,10 +397,7 @@
     function chargerAppartements() {
       const data = JSON.parse(localStorage.getItem('appartements')) || [];
       select.innerHTML = '';
-      if (data.length === 0) {
-          select.innerHTML = '<option disabled selected>Aucun appartement</option>';
-          return;
-      }
+      if (data.length === 0) return;
       data.forEach((apt, index) => {
         const option = document.createElement('option');
         option.value = index;
@@ -426,33 +424,22 @@
       const index = select.value;
       const moisSelectionnes = Array.from(moisInput.selectedOptions);
       const coutUnitaire = parseFloat(coutMensuelAffichage.value);
-      
       if (moisSelectionnes.length === 0) return alert("Sélectionnez des mois.");
-      
       const paiements = JSON.parse(localStorage.getItem('paiements')) || {};
       if (!paiements[index]) paiements[index] = [];
-      
       moisSelectionnes.forEach(opt => {
           if (!opt.textContent.includes('PAYÉ')) {
               paiements[index].push({ 
-                  id: Date.now() + Math.random(), 
-                  mois: opt.value, 
-                  montant: coutUnitaire, 
-                  type: 'Paiement', 
-                  observation: observationInput.value || '', 
+                  id: Date.now() + Math.random(), mois: opt.value, montant: coutUnitaire, 
+                  type: 'Paiement', observation: observationInput.value || '', 
                   dateEnregistrement: new Date().toISOString() 
               });
           }
       });
-      
       localStorage.setItem('paiements', JSON.stringify(paiements));
-      alert("Paiement(s) enregistré(s) avec succès.");
       observationInput.value = "";
-      
       afficherDetailsAppartement();
-      if (historiqueSection.style.display === 'block') {
-          afficherHistorique();
-      }
+      if (historiqueSection.style.display === 'block') afficherHistorique();
     }
 
     function ajouterAvance() {
@@ -466,11 +453,8 @@
             type: 'Avance', observation: "Versement Avance", dateEnregistrement: new Date().toISOString() 
         });
         localStorage.setItem('paiements', JSON.stringify(paiements));
-        
         afficherDetailsAppartement();
-        if (historiqueSection.style.display === 'block') {
-            afficherHistorique();
-        }
+        if (historiqueSection.style.display === 'block') afficherHistorique();
     }
 
     function ouvrirFactureIndividuelle(aptIndex, paiementId) {
@@ -478,52 +462,30 @@
         const paiements = JSON.parse(localStorage.getItem('paiements')) || {};
         const apt = appartements[aptIndex];
         const p = paiements[aptIndex].find(x => x.id == paiementId);
-        
         if (!apt || !p) return;
-
         const datePaiement = new Date(p.dateEnregistrement).toLocaleDateString('fr-FR');
         const moisFacture = p.type === 'Avance' ? "Avance sur loyer" : formaterMoisTexte(p.mois);
-        const sigProprioImg = apt.signatureProprio ? `<img src="${apt.signatureProprio}" class="signature-img">` : '<p class="text-muted small">Non signée</p>';
-        const sigLocataireImg = apt.signatureLocataire ? `<img src="${apt.signatureLocataire}" class="signature-img">` : '<p class="text-muted small">Non signée</p>';
+        const sigProprioImg = apt.signatureProprio ? `<img src="${apt.signatureProprio}" class="signature-img">` : '<p class="small">Sans signature</p>';
+        const sigLocataireImg = apt.signatureLocataire ? `<img src="${apt.signatureLocataire}" class="signature-img">` : '<p class="small">Sans signature</p>';
 
-        const html = `
-            <div class="border p-4 bg-white" id="facturePrintable">
+        document.getElementById('factureContent').innerHTML = `
+            <div class="border p-4 bg-white">
                 <div class="text-center mb-3">
-                    <h4 class="text-primary fw-bold">SMART LOCATION</h4>
-                    <p class="small text-muted mb-0">Reçu de paiement officiel</p>
+                    <h4 class="fw-bold">REÇU SMART LOCATION</h4>
                     <hr>
                 </div>
-                <div class="row small mb-3">
-                    <div class="col-6"><strong>N° Reçu :</strong> #${Math.floor(p.id / 1000000)}</div>
-                    <div class="col-6 text-end"><strong>Date :</strong> ${datePaiement}</div>
-                </div>
-                <div class="mb-3">
-                    <p class="mb-1"><strong>Propriétaire :</strong> ${apt.proprietaireNom}</p>
-                    <p class="mb-1"><strong>Locataire :</strong> ${apt.locataire}</p>
-                    <p class="mb-1"><strong>Appartement :</strong> ${apt.nom}</p>
-                </div>
-                <table class="table table-bordered table-sm">
-                    <thead class="table-light">
-                        <tr><th>Désignation</th><th class="text-end">Montant</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr><td>Loyer : ${moisFacture}</td><td class="text-end fw-bold">${p.montant.toLocaleString()} FCFA</td></tr>
-                    </tbody>
+                <p><strong>N° :</strong> #${Math.floor(p.id / 1000000)} | <strong>Date :</strong> ${datePaiement}</p>
+                <p><strong>Locataire :</strong> ${apt.locataire}</p>
+                <p><strong>Bien :</strong> ${apt.nom}</p>
+                <table class="table table-bordered">
+                    <thead><tr><th>Libellé</th><th class="text-end">Montant</th></tr></thead>
+                    <tbody><tr><td>${moisFacture}</td><td class="text-end fw-bold">${p.montant.toLocaleString()} FCFA</td></tr></tbody>
                 </table>
-                <div class="bg-light p-2 mb-3 text-center">
-                    <span class="fw-bold">Arrêté à la somme de : ${p.montant.toLocaleString()} FCFA</span>
-                </div>
                 <div class="row mt-4">
-                    <div class="col-6 text-center">
-                        <span class="small fw-bold">Signature Locataire</span><br>${sigLocataireImg}
-                    </div>
-                    <div class="col-6 text-center">
-                        <span class="small fw-bold">Signature Propriétaire</span><br>${sigProprioImg}
-                    </div>
+                    <div class="col-6 text-center"><small>Locataire</small><br>${sigLocataireImg}</div>
+                    <div class="col-6 text-center"><small>Propriétaire</small><br>${sigProprioImg}</div>
                 </div>
-            </div>
-        `;
-        document.getElementById('factureContent').innerHTML = html;
+            </div>`;
         modalFacture.show();
     }
 
@@ -533,143 +495,46 @@
         const paiements = JSON.parse(localStorage.getItem('paiements')) || {};
         const apt = appartements[index];
         const dataPaiements = paiements[index] || [];
-        if (!apt) return alert("Sélectionnez un appartement.");
-
+        if (!apt) return;
         const totalPaye = dataPaiements.reduce((sum, p) => sum + parseFloat(p.montant), 0);
-        const totalRetard = parseInt(montantRetardsDisplay.value.replace(/[^0-9]/g, '')) || 0;
+        let lignes = dataPaiements.map(p => `<tr><td>${formaterMoisTexte(p.mois)}</td><td>${p.type}</td><td class="text-end">${p.montant.toLocaleString()} FCFA</td></tr>`).join('');
         
-        const sigProprioImg = apt.signatureProprio ? `<img src="${apt.signatureProprio}" class="signature-img">` : '<p class="text-muted small">Non configurée</p>';
-        const sigLocataireImg = apt.signatureLocataire ? `<img src="${apt.signatureLocataire}" class="signature-img">` : '<p class="text-muted small">Non configurée</p>';
-        
-        let lignesPaiement = "";
-        if (dataPaiements.length > 0) {
-            dataPaiements.sort((a, b) => b.mois.localeCompare(a.mois)).forEach(p => {
-                const datePaye = p.dateEnregistrement ? new Date(p.dateEnregistrement).toLocaleDateString() : 'N/A';
-                const moisTexte = p.type === 'Avance' ? "Avance" : formaterMoisTexte(p.mois);
-                lignesPaiement += `<tr><td>${moisTexte}</td><td>${p.type}</td><td>${datePaye}</td><td class="text-end fw-bold" style="color:#0d6efd;">${p.montant.toLocaleString()} FCFA</td><td>${p.observation || '-'}</td></tr>`;
-            });
-        } else { lignesPaiement = '<tr><td colspan="5" class="text-center">Aucun paiement</td></tr>'; }
-        
-        const content = `
-            <div class="p-4 border border-dark mb-3">
-                <div class="text-center mb-4">
-                    <h3 class="mb-0 text-uppercase fw-bold" style="color:#003366;">RAPPORT FINANCIER DE LOCATION</h3>
-                    <hr class="border-dark">
-                </div>
-                <div class="row mb-3">
-                    <div class="col-6">
-                        <h6 class="fw-bold">PROPRIÉTAIRE :</h6>
-                        <p class="mb-1">${apt.proprietaireNom}</p>
-                        <p class="small text-muted">📞 ${apt.proprietaireContact || 'N/A'}</p>
-                    </div>
-                    <div class="col-6 text-end">
-                        <h6 class="fw-bold">LOCATAIRE :</h6>
-                        <p class="mb-1">${apt.locataire}</p>
-                        <p class="small text-muted">📞 ${apt.telephone || apt.locataireContact || 'N/A'}</p>
-                    </div>
-                </div>
-                <table class="table table-sm table-bordered mb-4">
-                    <thead>
-                        <tr style="background-color:#003366; color:white;"><th>BIEN CONCERNÉ</th><td>${apt.nom}</td></tr>
-                        <tr><th>LOYER MENSUEL</th><td class="fw-bold">${apt.cout.toLocaleString()} FCFA</td></tr>
-                    </thead>
+        document.getElementById('rapportContent').innerHTML = `
+            <div class="p-3">
+                <h3 class="text-center fw-bold">RAPPORT DE LOCATION - ${apt.nom}</h3>
+                <p><strong>Locataire :</strong> ${apt.locataire} | <strong>Propriétaire :</strong> ${apt.proprietaireNom}</p>
+                <table class="table table-bordered table-sm">
+                    <thead><tr class="table-light"><th>Mois</th><th>Type</th><th class="text-end">Montant</th></tr></thead>
+                    <tbody>${lignes}</tbody>
                 </table>
-                <h6 class="fw-bold text-uppercase border-bottom pb-1">Détails des Versements</h6>
-                <table class="table table-sm table-striped table-bordered mb-4">
-                    <thead>
-                        <tr class="table-secondary text-center">
-                            <th>Mois / Objet</th><th>Type</th><th>Date Enreg.</th><th>Montant</th><th>Note</th>
-                        </tr>
-                    </thead>
-                    <tbody>${lignesPaiement}</tbody>
-                </table>
-                <div class="bg-light p-3 border mb-4">
-                    <div class="row text-center">
-                        <div class="col-4 fw-bold" style="color:#0d6efd;">CUMUL PAYÉ: <br>${totalPaye.toLocaleString()} FCFA</div>
-                        <div class="col-4 fw-bold" style="color:#dc3545;">TOTAL RETARD: <br>${totalRetard.toLocaleString()} FCFA</div>
-                        <div class="col-4 fw-bold">ÉDITÉ LE: <br>${new Date().toLocaleDateString()}</div>
-                    </div>
-                </div>
-                <div class="row mt-5">
-                    <div class="col-6 text-center">
-                        <span class="fw-bold border-bottom">SIGNATURE LOCATAIRE</span><br>${sigLocataireImg}
-                    </div>
-                    <div class="col-6 text-center">
-                        <span class="fw-bold border-bottom">SIGNATURE PROPRIÉTAIRE</span><br>${sigProprioImg}
-                    </div>
-                </div>
+                <p class="text-end fw-bold">TOTAL VERSÉ : ${totalPaye.toLocaleString()} FCFA</p>
             </div>`;
-        
-        document.getElementById('rapportContent').innerHTML = content;
         modalRapport.show();
-    }
-
-    function copierRapportWhatsApp() {
-        const index = select.value;
-        const apt = JSON.parse(localStorage.getItem('appartements'))[index];
-        const paye = montantCumulePayeDisplay.value;
-        const retard = montantRetardsDisplay.value;
-        const text = `*RAPPORT SMARTLOCATION*\nBien: ${apt.nom}\nLocataire: ${apt.locataire}\nPayé: ${paye}\nRetards: ${retard}`;
-        navigator.clipboard.writeText(text).then(() => alert("Copié !"));
     }
 
     function afficherHistorique() {
       const index = select.value;
       const filterDate = searchDateInput.value;
-      const appartements = JSON.parse(localStorage.getItem('appartements')) || [];
-      const aptNom = appartements[index]?.nom || "Inconnu";
       const paiements = JSON.parse(localStorage.getItem('paiements')) || {};
       let data = paiements[index] || [];
-      
       historique.innerHTML = '';
-      
-      if (filterDate) {
-          data = data.filter(p => p.dateEnregistrement.startsWith(filterDate));
-      }
-
-      if (data.length === 0) {
-        historique.innerHTML = '<tr><td colspan="6" class="text-center text-muted italic">Aucun historique correspondant</td></tr>';
-        return;
-      }
-
-      const dataTriee = [...data].sort((a, b) => b.mois.localeCompare(a.mois));
-      const paiementsSeuls = dataTriee.filter(p => p.type === 'Paiement');
-      const dernierMoisValeur = paiementsSeuls.length > 0 ? paiementsSeuls[0].mois : null;
-
-      dataTriee.forEach(p => {
+      if (filterDate) data = data.filter(p => p.dateEnregistrement.startsWith(filterDate));
+      data.sort((a, b) => b.mois.localeCompare(a.mois)).forEach(p => {
         const row = document.createElement('tr');
         row.className = "clickable-row";
-        row.onclick = (e) => {
-            if(e.target.tagName !== 'BUTTON') ouvrirFactureIndividuelle(index, p.id);
-        };
-
-        let moisAffiche = p.type === 'Avance' ? "Versement d'avance" : formaterMoisTexte(p.mois);
-        if (p.type === 'Paiement' && p.mois === dernierMoisValeur) {
-            moisAffiche += ' <strong class="text-success">(Dernier mois payé)</strong>';
-        }
-
-        row.innerHTML = `
-            <td>${aptNom}</td>
-            <td>${moisAffiche}</td>
-            <td>${p.montant.toLocaleString()} FCFA</td>
-            <td>${p.type}</td>
-            <td>${p.observation}</td>
-            <td class="no-print"><button class="btn btn-sm btn-danger" onclick="supprimerPaiement(${index}, ${p.id})">Suppr</button></td>
-        `;
+        row.onclick = (e) => { if(e.target.tagName !== 'BUTTON') ouvrirFactureIndividuelle(index, p.id); };
+        row.innerHTML = `<td>${select.options[select.selectedIndex].text}</td><td>${formaterMoisTexte(p.mois)}</td><td>${p.montant.toLocaleString()}</td><td>${p.type}</td><td>${p.observation}</td><td><button class="btn btn-sm btn-danger" onclick="supprimerPaiement(${index}, ${p.id})">Suppr</button></td>`;
         historique.appendChild(row);
       });
     }
 
     function supprimerPaiement(idx, id) {
-        if (!confirm("Voulez-vous vraiment supprimer cet enregistrement ?")) return;
+        if (!confirm("Supprimer ?")) return;
         let p = JSON.parse(localStorage.getItem('paiements'));
         p[idx] = p[idx].filter(x => x.id !== id);
         localStorage.setItem('paiements', JSON.stringify(p));
-        
         afficherDetailsAppartement();
-        if (historiqueSection.style.display === 'block') {
-            afficherHistorique();
-        }
+        if (historiqueSection.style.display === 'block') afficherHistorique();
     }
 
     function toggleHistorique() {
@@ -686,8 +551,6 @@
     function toggleModificationCout() {
         if(coutMensuelAffichage.readOnly) {
             coutMensuelAffichage.readOnly = false;
-            btnModifierCout.textContent = "Appliquer";
-            btnModifierCout.className = "btn btn-success";
         } else {
             const index = select.value;
             const data = JSON.parse(localStorage.getItem('appartements')) || [];
@@ -695,8 +558,6 @@
                 data[index].cout = parseFloat(coutMensuelAffichage.value);
                 localStorage.setItem('appartements', JSON.stringify(data));
                 coutMensuelAffichage.readOnly = true;
-                btnModifierCout.textContent = "Modifier";
-                btnModifierCout.className = "btn btn-info";
                 afficherDetailsAppartement();
             }
         }
@@ -704,9 +565,7 @@
 
     select.addEventListener('change', () => { 
         afficherDetailsAppartement(); 
-        if (historiqueSection.style.display === 'block') {
-            afficherHistorique();
-        }
+        if (historiqueSection.style.display === 'block') afficherHistorique();
     });
 
     toggleHistoriqueBtn.addEventListener('click', toggleHistorique);
