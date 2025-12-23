@@ -80,7 +80,6 @@
         overflow-y: auto;
     }
     
-    /* MODIFICATION : STYLE D'IMPRESSION PROFESSIONNEL */
     @media print {
         body * { visibility: hidden; }
         #printArea, #printArea * { visibility: visible; }
@@ -203,7 +202,7 @@
             <h5 class="modal-title font-monospace">ÉTAT FINANCIER DÉTAILLÉ</h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
           </div>
-          <div class="modal-body" id="printAreaRapport">
+          <div class="modal-body">
               <div id="rapportContent"></div>
           </div>
           <div class="modal-footer no-print">
@@ -281,14 +280,11 @@
     const zoneAvances = document.getElementById('zoneAvancesDisponibles');
     const infoMoisAvance = document.getElementById('infoMoisAvance');
 
-    // MODIFICATION : FONCTION D'IMPRESSION AVEC DELAI DE SECURITE (ANDROID COMPATIBLE)
     function lancerImpression(divId) {
         const content = document.getElementById(divId).innerHTML;
         const printArea = document.getElementById('printArea');
         printArea.innerHTML = content;
         printArea.style.display = 'block';
-
-        // Délai de 500ms pour s'assurer que le DOM est rendu avant l'appel système d'impression
         setTimeout(() => {
             window.print();
             printArea.style.display = 'none';
@@ -464,26 +460,58 @@
         const p = paiements[aptIndex].find(x => x.id == paiementId);
         if (!apt || !p) return;
         const datePaiement = new Date(p.dateEnregistrement).toLocaleDateString('fr-FR');
-        const moisFacture = p.type === 'Avance' ? "Avance sur loyer" : formaterMoisTexte(p.mois);
+        const moisFacture = p.type === 'Avance' ? "AVANCE SUR LOYER" : formaterMoisTexte(p.mois).toUpperCase();
         const sigProprioImg = apt.signatureProprio ? `<img src="${apt.signatureProprio}" class="signature-img">` : '<p class="small">Sans signature</p>';
         const sigLocataireImg = apt.signatureLocataire ? `<img src="${apt.signatureLocataire}" class="signature-img">` : '<p class="small">Sans signature</p>';
 
+        // MODIFICATION : LOGIQUE D'IMPRESSION DU REÇU IDENTIQUE AU RAPPORT
         document.getElementById('factureContent').innerHTML = `
-            <div class="border p-4 bg-white">
-                <div class="text-center mb-3">
-                    <h4 class="fw-bold">REÇU SMART LOCATION</h4>
-                    <hr>
+            <div class="p-4 border border-dark">
+                <div class="text-center mb-4">
+                    <h3 class="mb-0 text-uppercase fw-bold" style="color:#003366;">REÇU DE PAIEMENT</h3>
+                    <hr class="border-dark">
                 </div>
-                <p><strong>N° :</strong> #${Math.floor(p.id / 1000000)} | <strong>Date :</strong> ${datePaiement}</p>
-                <p><strong>Locataire :</strong> ${apt.locataire}</p>
-                <p><strong>Bien :</strong> ${apt.nom}</p>
-                <table class="table table-bordered">
-                    <thead><tr><th>Libellé</th><th class="text-end">Montant</th></tr></thead>
-                    <tbody><tr><td>${moisFacture}</td><td class="text-end fw-bold">${p.montant.toLocaleString()} FCFA</td></tr></tbody>
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <h6 class="fw-bold">PROPRIÉTAIRE :</h6>
+                        <p class="mb-1">${apt.proprietaireNom}</p>
+                        <p class="small text-muted">📞 ${apt.proprietaireContact || 'N/A'}</p>
+                    </div>
+                    <div class="col-6 text-end">
+                        <h6 class="fw-bold">LOCATAIRE :</h6>
+                        <p class="mb-1">${apt.locataire}</p>
+                        <p class="small text-muted">#REC-${Math.floor(p.id / 1000000)}</p>
+                    </div>
+                </div>
+                <table class="table table-sm table-bordered mb-4">
+                    <thead>
+                        <tr style="background-color:#003366; color:white;"><th>BIEN CONCERNÉ</th><td>${apt.nom}</td></tr>
+                        <tr><th>DATE DE PAIEMENT</th><td class="fw-bold">${datePaiement}</td></tr>
+                    </thead>
                 </table>
-                <div class="row mt-4">
-                    <div class="col-6 text-center"><small>Locataire</small><br>${sigLocataireImg}</div>
-                    <div class="col-6 text-center"><small>Propriétaire</small><br>${sigProprioImg}</div>
+                <h6 class="fw-bold text-uppercase border-bottom pb-1">Détails du Versement</h6>
+                <table class="table table-sm table-bordered mb-4">
+                    <thead>
+                        <tr class="table-secondary text-center">
+                            <th>Objet du paiement</th><th>Type</th><th>Montant (FCFA)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="text-center">
+                            <td>${moisFacture}</td><td>${p.type}</td><td class="fw-bold" style="color:#0d6efd;">${p.montant.toLocaleString()} FCFA</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="bg-light p-3 border mb-4 text-center">
+                    <span class="fw-bold">SOMME ARRÊTÉE À : ${p.montant.toLocaleString()} FCFA</span>
+                </div>
+                <div class="row mt-5">
+                    <div class="col-6 text-center">
+                        <span class="fw-bold border-bottom">SIGNATURE LOCATAIRE</span><br>${sigLocataireImg}
+                    </div>
+                    <div class="col-6 text-center">
+                        <span class="fw-bold border-bottom">SIGNATURE PROPRIÉTAIRE</span><br>${sigProprioImg}
+                    </div>
                 </div>
             </div>`;
         modalFacture.show();
@@ -497,17 +525,39 @@
         const dataPaiements = paiements[index] || [];
         if (!apt) return;
         const totalPaye = dataPaiements.reduce((sum, p) => sum + parseFloat(p.montant), 0);
-        let lignes = dataPaiements.map(p => `<tr><td>${formaterMoisTexte(p.mois)}</td><td>${p.type}</td><td class="text-end">${p.montant.toLocaleString()} FCFA</td></tr>`).join('');
+        const totalRetard = parseInt(montantRetardsDisplay.value.replace(/[^0-9]/g, '')) || 0;
+        const sigProprioImg = apt.signatureProprio ? `<img src="${apt.signatureProprio}" class="signature-img">` : '<p class="small">Sans signature</p>';
+        const sigLocataireImg = apt.signatureLocataire ? `<img src="${apt.signatureLocataire}" class="signature-img">` : '<p class="small">Sans signature</p>';
+        
+        let lignes = dataPaiements.map(p => `<tr><td>${formaterMoisTexte(p.mois)}</td><td>${p.type}</td><td>${new Date(p.dateEnregistrement).toLocaleDateString()}</td><td class="text-end fw-bold">${p.montant.toLocaleString()} FCFA</td></tr>`).join('');
         
         document.getElementById('rapportContent').innerHTML = `
-            <div class="p-3">
-                <h3 class="text-center fw-bold">RAPPORT DE LOCATION - ${apt.nom}</h3>
-                <p><strong>Locataire :</strong> ${apt.locataire} | <strong>Propriétaire :</strong> ${apt.proprietaireNom}</p>
-                <table class="table table-bordered table-sm">
-                    <thead><tr class="table-light"><th>Mois</th><th>Type</th><th class="text-end">Montant</th></tr></thead>
+            <div class="p-4 border border-dark">
+                <div class="text-center mb-4">
+                    <h3 class="mb-0 text-uppercase fw-bold" style="color:#003366;">RAPPORT FINANCIER DE LOCATION</h3>
+                    <hr class="border-dark">
+                </div>
+                <div class="row mb-3">
+                    <div class="col-6"><h6>PROPRIÉTAIRE : ${apt.proprietaireNom}</h6></div>
+                    <div class="col-6 text-end"><h6>LOCATAIRE : ${apt.locataire}</h6></div>
+                </div>
+                <table class="table table-sm table-bordered mb-4">
+                    <thead><tr style="background-color:#003366; color:white;"><th>BIEN</th><td>${apt.nom}</td></tr></thead>
+                </table>
+                <table class="table table-sm table-bordered mb-4">
+                    <thead class="table-secondary"><tr><th>Mois</th><th>Type</th><th>Date</th><th class="text-end">Montant</th></tr></thead>
                     <tbody>${lignes}</tbody>
                 </table>
-                <p class="text-end fw-bold">TOTAL VERSÉ : ${totalPaye.toLocaleString()} FCFA</p>
+                <div class="bg-light p-2 mb-4">
+                    <div class="row text-center">
+                        <div class="col-6 fw-bold text-primary">CUMUL PAYÉ: ${totalPaye.toLocaleString()} FCFA</div>
+                        <div class="col-6 fw-bold text-danger">TOTAL RETARD: ${totalRetard.toLocaleString()} FCFA</div>
+                    </div>
+                </div>
+                <div class="row mt-5">
+                    <div class="col-6 text-center"><small>Locataire</small><br>${sigLocataireImg}</div>
+                    <div class="col-6 text-center"><small>Propriétaire</small><br>${sigProprioImg}</div>
+                </div>
             </div>`;
         modalRapport.show();
     }
