@@ -1,5 +1,5 @@
 // Nom du cache pour votre application
-const CACHE_NAME = 'smartlocation-v1';
+const CACHE_NAME = 'smartlocation-v2';
 
 // Liste des fichiers à mettre en cache pour une utilisation hors ligne
 const ASSETS_TO_CACHE = [
