@@ -64,10 +64,21 @@
     #montantCumulePaye {
         color: #0d6efd !important;
         font-weight: bold !important;
+        background-color: #e7f3ff;
     }
     #montantRetards {
         color: #dc3545 !important;
         font-weight: bold !important;
+        background-color: #f8d7da;
+    }
+    /* Nouveaux Styles pour les codes couleurs des mois */
+    .option-paye {
+      color: #0099ff !important;
+      font-weight: bold;
+    }
+    .option-retard {
+      color: #dc3545 !important;
+      font-weight: bold;
     }
     .facture-box-whatsapp {
         white-space: pre-wrap;
@@ -88,20 +99,17 @@
         .print-only { display: block !important; }
         .table-secondary { background-color: #e2e3e5 !important; -webkit-print-color-adjust: exact; }
     }
-    /* Style pour l'aperçu des signatures dans le rapport */
     .signature-img {
       max-width: 150px;
       max-height: 80px;
       display: block;
       margin: 10px auto;
     }
-    /* Nouveau style pour les avances */
     #zoneAvancesDisponibles {
       background-color: #e7f3ff;
       border: 1px solid #b3d7ff;
       border-radius: 8px;
     }
-    /* Style pour les lignes cliquables de l'historique */
     .clickable-row { cursor: pointer; transition: background 0.2s; }
     .clickable-row:hover { background-color: #e9ecef !important; }
   </style>
@@ -166,10 +174,10 @@
         </div>
         <div class="col-md-4 mb-3">
             <label class="form-label">💰 Déjà Payé (Cumulé FCFA)</label>
-            <input type="text" id="montantCumulePaye" class="form-control" readonly />
+            <input type="text" id="montantCumulePaye" class="form-control" value="0" readonly />
             
             <label class="form-label mt-3">🚨 Total des Retards (FCFA)</label>
-            <input type="text" id="montantRetards" class="form-control" readonly />
+            <input type="text" id="montantRetards" class="form-control" value="0" readonly />
         </div>
         <div class="col-md-4 mb-3">
             <label class="form-label">💵 Montant Sélectionné (FCFA)</label>
@@ -237,109 +245,108 @@
     const inputContact = document.getElementById('contactProprietaireAffichage');
     const selectMois = document.getElementById('mois');
     const inputMontant = document.getElementById('montant');
+    
     let listeAppartementsData = [];
+    let paiementsLocaux = []; // Pour stocker temporairement les paiements de l'appartement sélectionné
+    const moisAnnee = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
 
-    // 1. Charger la liste des appartements dans le SELECT (Mise à jour demandée)
-    async function chargerAppartements() {
-        const select = document.getElementById('selectAppartement');
-        // Vérifiez que le nom ici est bien "appartements"
-        const querySnapshot = await getDocs(collection(db, "appartements")); 
-        
-        select.innerHTML = '<option value="">-- Choisir un appartement --</option>';
-        listeAppartementsData = [];
-        
-        querySnapshot.forEach((docSnap) => {
-            const apt = docSnap.data();
-            // On conserve l'objet complet dans notre liste locale pour les autres fonctions
-            listeAppartementsData.push({ id: docSnap.id, ...apt });
-            
-            const opt = document.createElement('option');
-            opt.value = docSnap.id; // L'ID Firebase
-            opt.textContent = apt.nom; // Le nom de l'appartement
-            select.appendChild(opt);
-        });
-        genererListeMois();
-    }
-
-    // 2. Générer les mois dans le SELECT multiple
-    function genererListeMois() {
-        const nomsMois = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
-        const anneeCourante = new Date().getFullYear();
+    // Génération dynamique de la liste des mois avec code couleur
+    function genererMois() {
         selectMois.innerHTML = "";
-        for (let a = anneeCourante - 1; a <= anneeCourante + 1; a++) {
-            nomsMois.forEach((m, i) => {
-                const valeur = `${a}-${String(i + 1).padStart(2, '0')}`;
-                const opt = document.createElement('option');
-                opt.value = valeur;
-                opt.textContent = `${m} ${a}`;
-                selectMois.appendChild(opt);
-            });
-        }
+        const annee = new Date().getFullYear();
+        moisAnnee.forEach(m => {
+            const nomComplet = `${m} ${annee}`;
+            const opt = document.createElement('option');
+            opt.value = nomComplet;
+            opt.textContent = nomComplet;
+
+            // Vérifier si le mois est déjà payé dans l'historique chargé
+            const dejaPaye = paiementsLocaux.some(p => p.mois.includes(nomComplet));
+            if(dejaPaye) {
+                opt.classList.add('option-paye');
+                opt.textContent += " ✅";
+            } else {
+                opt.classList.add('option-retard');
+            }
+            selectMois.appendChild(opt);
+        });
     }
 
-    // 3. Afficher détails quand on sélectionne un appartement
-    selectApt.addEventListener('change', () => {
-        const apt = listeAppartementsData.find(a => a.id === selectApt.value);
-        if (apt) {
-            inputCout.value = apt.cout;
-            inputProprio.value = apt.proprietaireNom || "Non défini";
-            inputContact.value = apt.proprietaireContact || "Non défini";
-            chargerHistorique(apt.id);
-        } else {
-            inputCout.value = "";
-            inputProprio.value = "";
-            inputContact.value = "";
-        }
-    });
+    async function chargerAppartements() {
+      try {
+        const querySnapshot = await getDocs(collection(db, "appartements"));
+        selectApt.innerHTML = '<option value="">-- Choisir un appartement --</option>';
+        listeAppartementsData = [];
+        querySnapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          const apt = { id: docSnap.id, ...data };
+          listeAppartementsData.push(apt);
+          const opt = document.createElement('option');
+          opt.value = apt.id;
+          opt.textContent = apt.nom; 
+          selectApt.appendChild(opt);
+        });
+      } catch (error) { console.error(error); }
+    }
 
-    // 4. Calculer montant automatique lors de la sélection des mois
     selectMois.addEventListener('change', () => {
         const nbMois = Array.from(selectMois.selectedOptions).length;
         const cout = parseFloat(inputCout.value) || 0;
         inputMontant.value = nbMois * cout;
     });
 
-    // 5. Enregistrer le paiement dans Firebase
+    selectApt.addEventListener('change', async () => {
+      const apt = listeAppartementsData.find(a => a.id === selectApt.value);
+      if (apt) {
+        inputCout.value = apt.cout || 0;
+        inputProprio.value = apt.proprietaireNom || "Non défini";
+        inputContact.value = apt.proprietaireContact || "Non défini";
+        inputMontant.value = 0;
+        // On charge l'historique avant de générer la liste des mois pour le code couleur
+        await chargerHistorique(apt.id, apt); 
+      }
+    });
+
     document.getElementById('btnValiderPaiement').addEventListener('click', async () => {
         const aptId = selectApt.value;
+        const apt = listeAppartementsData.find(a => a.id === aptId);
         const moisSelectionnes = Array.from(selectMois.selectedOptions).map(o => o.value);
         const montantTotal = parseFloat(inputMontant.value);
+        const observation = document.getElementById('observation').value;
 
-        if (!aptId || moisSelectionnes.length === 0 || montantTotal <= 0) {
-            alert("Veuillez sélectionner un appartement et au moins un mois.");
+        if (!aptId || moisSelectionnes.length === 0) {
+            alert("Veuillez choisir un appartement et au moins un mois.");
             return;
         }
 
         try {
-            const coutUnitaire = montantTotal / moisSelectionnes.length;
-            for (const m de moisSelectionnes) {
-                await addDoc(collection(db, "paiements"), {
-                    idAppartement: aptId,
-                    mois: m,
-                    montant: coutUnitaire,
-                    type: "Paiement",
-                    observation: document.getElementById('observation').value,
-                    dateCreation: new Date().toISOString()
-                });
-            }
-            alert("Paiement(s) enregistré(s) avec succès !");
-            chargerHistorique(aptId);
-            selectMois.selectedIndex = -1;
-            inputMontant.value = "";
-        } catch (e) {
-            console.error("Erreur de paiement : ", e);
-        }
+            await addDoc(collection(db, "paiements"), {
+                idAppartement: aptId,
+                mois: moisSelectionnes.join(", "),
+                montant: montantTotal,
+                type: "Loyer",
+                observation: observation,
+                dateAction: new Date().toISOString()
+            });
+            alert("Paiement enregistré !");
+            document.getElementById('observation').value = "";
+            inputMontant.value = 0;
+            await chargerHistorique(aptId, apt);
+        } catch (e) { console.error(e); }
     });
 
-    // 6. Charger l'historique depuis Firebase
-    async function chargerHistorique(aptId) {
+    async function chargerHistorique(aptId, apt) {
         const q = query(collection(db, "paiements"), where("idAppartement", "==", aptId));
         const querySnapshot = await getDocs(q);
         const tbody = document.getElementById('historiquePaiements');
+        let totalPaye = 0;
         tbody.innerHTML = "";
+        paiementsLocaux = [];
 
         querySnapshot.forEach((docSnap) => {
             const p = docSnap.data();
+            paiementsLocaux.push(p);
+            totalPaye += p.montant;
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${p.mois}</td>
@@ -350,24 +357,36 @@
             `;
             tbody.appendChild(tr);
         });
+
+        // Mise à jour de la liste des mois avec les nouvelles couleurs
+        genererMois();
+
+        // Mise à jour dynamique des compteurs
+        document.getElementById('montantCumulePaye').value = totalPaye + " FCFA";
+        
+        // Calcul du retard théorique
+        if(apt && apt.dateEntree && apt.cout) {
+            const dateDebut = new Date(apt.dateEntree);
+            const dateFin = new Date();
+            const moisEcoules = (dateFin.getFullYear() - dateDebut.getFullYear()) * 12 + (dateFin.getMonth() - dateDebut.getMonth()) + 1;
+            const totalDu = moisEcoules * apt.cout;
+            const retard = Math.max(0, totalDu - totalPaye);
+            document.getElementById('montantRetards').value = retard + " FCFA";
+        }
     }
 
     window.supprimerPaiement = async (id, aptId) => {
         if(confirm("Supprimer ce paiement ?")) {
             await deleteDoc(doc(db, "paiements", id));
-            chargerHistorique(aptId);
+            const apt = listeAppartementsData.find(a => a.id === aptId);
+            chargerHistorique(aptId, apt);
         }
     };
 
     document.getElementById('toggleHistoriqueBtn').addEventListener('click', () => {
         const section = document.getElementById('historiqueSection');
-        if(section.style.display === "none" || section.style.display === "") {
-            section.style.display = "block";
-            document.getElementById('toggleHistoriqueBtn').textContent = "Masquer l'historique";
-        } else {
-            section.style.display = "none";
-            document.getElementById('toggleHistoriqueBtn').textContent = "Afficher l'historique";
-        }
+        section.style.display = (section.style.display === "none" || section.style.display === "") ? "block" : "none";
+        document.getElementById('toggleHistoriqueBtn').textContent = section.style.display === "block" ? "Masquer l'historique" : "Afficher l'historique";
     });
 
     function mettreAJourNavbarDate() {
@@ -375,10 +394,9 @@
         document.getElementById('navbarDate').textContent = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
     }
 
-    window.onload = () => {
-        mettreAJourNavbarDate();
-        chargerAppartements();
-    };
+    mettreAJourNavbarDate();
+    genererMois();
+    chargerAppartements();
   </script>
 </body>
 </html>

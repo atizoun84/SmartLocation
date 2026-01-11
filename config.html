@@ -211,7 +211,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-          <button type="button" id="btnSauvegarderModif" class="btn btn-success">Enregistrer les modifications</button>
+          <button type="button" onclick="sauvegarderModification()" class="btn btn-success">Enregistrer les modifications</button>
         </div>
       </div>
     </div>
@@ -219,37 +219,17 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-  <script type="module">
-    // Importation des modules Firebase
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-    // Configuration Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyCPxkdwz-wNR3wNnDSMyFMAwKKVKvNlacs",
-      authDomain: "smartloc-famille-804c4.firebaseapp.com",
-      projectId: "smartloc-famille-804c4",
-      storageBucket: "smartloc-famille-804c4.firebasestorage.app",
-      messagingSenderId: "1079256920416",
-      appId: "1:1079256920416:web:94a3a9dc26044efaeeae05"
-    };
-
-    // Initialisation
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
+  <script>
     const form = document.getElementById('formAppartement');
     const liste = document.getElementById('listeAppartements');
     const toggleBtn = document.getElementById('toggleListe');
     const modifModal = new bootstrap.Modal(document.getElementById('modalModification'));
-    
-    let appartementsLocaux = []; // Pour la gestion de l'affichage et de l'export
 
     // Fonction pour convertir une image en Base64
     function encodeImageFileAsURL(element) {
         return new Promise((resolve) => {
-            if (!element || !element.files[0]) resolve(null);
             const file = element.files[0];
+            if (!file) resolve(null);
             const reader = new FileReader();
             reader.onloadend = function() {
                 resolve(reader.result);
@@ -259,56 +239,33 @@
     }
 
     // --- FONCTIONS DE MAINTENANCE ---
-    window.exporterDonnees = async function() {
-        // On récupère aussi les paiements depuis Firebase pour l'export complet
-        const snapPaies = await getDocs(collection(db, "paiements"));
-        const paiementsMap = {};
-        snapPaies.forEach(doc => {
-            const p = doc.data();
-            if(!paiementsMap[p.idAppartement]) paiementsMap[p.idAppartement] = [];
-            paiementsMap[p.idAppartement].push({id: doc.id, ...p});
-        });
-
+    function exporterDonnees() {
         const data = {
-            appartements: appartementsLocaux,
-            paiements: paiementsMap
+            appartements: JSON.parse(localStorage.getItem('appartements')) || [],
+            paiements: JSON.parse(localStorage.getItem('paiements')) || {}
         };
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `smartlocation_cloud_backup_${new Date().toISOString().slice(0,10)}.json`;
+        a.download = `smartlocation_backup_${new Date().toISOString().slice(0,10)}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-    };
+    }
 
-    window.importerDonnees = async function(input) {
+    function importerDonnees(input) {
         const file = input.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = async function(e) {
+        reader.onload = function(e) {
             try {
                 const data = JSON.parse(e.target.result);
-                if (confirm("Attention : Cela écrasera les données sur le Cloud. Continuer ?")) {
-                    // Importation des appartements
-                    if (data.appartements) {
-                        for(const apt of data.appartements) {
-                            const {id, ...reste} = apt;
-                            await setDoc(doc(db, "appartements", id), reste);
-                        }
-                    }
-                    // Importation des paiements si présents
-                    if (data.paiements) {
-                        for(const aptId in data.paiements) {
-                            for(const p of data.paiements[aptId]) {
-                                const {id, ...resteP} = p;
-                                await setDoc(doc(db, "paiements", id), resteP);
-                            }
-                        }
-                    }
-                    alert("Restauration réussie sur le Cloud !");
+                if (confirm("Attention : Cela écrasera toutes vos données actuelles. Continuer ?")) {
+                    if (data.appartements) localStorage.setItem('appartements', JSON.stringify(data.appartements));
+                    if (data.paiements) localStorage.setItem('paiements', JSON.stringify(data.paiements));
+                    alert("Restauration réussie ! La page va s'actualiser.");
                     window.location.reload();
                 }
             } catch (err) {
@@ -316,32 +273,82 @@
             }
         };
         reader.readAsText(file);
-    };
+    }
 
-    async function chargerAppartements() {
-      const querySnapshot = await getDocs(collection(db, "appartements"));
+    async function modifierAppartement(index) {
+        if (!confirm("Voulez-vous modifier les informations de cet appartement ?")) return;
+        const data = JSON.parse(localStorage.getItem('appartements')) || [];
+        const apt = data[index];
+        if (!apt) return alert("Appartement introuvable.");
+        document.getElementById('modifIndex').value = index;
+        document.getElementById('modifNom').value = apt.nom;
+        document.getElementById('modifDate').value = apt.dateEntree; 
+        document.getElementById('modifCout').value = apt.cout;
+        document.getElementById('modifAvance').value = apt.avance || 0;
+        document.getElementById('modifProprietaireNom').value = apt.proprietaireNom;
+        document.getElementById('modifProprietaireContact').value = apt.proprietaireContact;
+        document.getElementById('modifLocataire').value = apt.locataire;
+        document.getElementById('modifTelephone').value = apt.telephone;
+        modifModal.show();
+    }
+
+    async function sauvegarderModification() {
+        const index = document.getElementById('modifIndex').value;
+        const nouveauNom = document.getElementById('modifNom').value;
+        const nouvelleDate = document.getElementById('modifDate').value;
+        const nouveauCout = parseFloat(document.getElementById('modifCout').value);
+        const nouvelleAvance = parseFloat(document.getElementById('modifAvance').value);
+        const nouveauProprietaireNom = document.getElementById('modifProprietaireNom').value;
+        const nouveauProprietaireContact = document.getElementById('modifProprietaireContact').value;
+        const nouveauLocataire = document.getElementById('modifLocataire').value;
+        const nouveauTelephone = document.getElementById('modifTelephone').value;
+
+        const sigProprio = await encodeImageFileAsURL(document.getElementById('modifSignatureProprio'));
+        const sigLocataire = await encodeImageFileAsURL(document.getElementById('modifSignatureLocataire'));
+
+        if (isNaN(nouveauCout) || nouveauCout <= 0) {
+            alert("Veuillez entrer un coût mensuel valide.");
+            return;
+        }
+
+        let data = JSON.parse(localStorage.getItem('appartements')) || [];
+        if (data[index]) {
+            const oldData = data[index];
+            data[index] = {
+                nom: nouveauNom,
+                dateEntree: nouvelleDate, 
+                cout: nouveauCout,
+                avance: nouvelleAvance,
+                proprietaireNom: nouveauProprietaireNom,
+                proprietaireContact: nouveauProprietaireContact,
+                locataire: nouveauLocataire,
+                telephone: nouveauTelephone,
+                signatureProprio: sigProprio || oldData.signatureProprio || null,
+                signatureLocataire: sigLocataire || oldData.signatureLocataire || null
+            };
+            localStorage.setItem('appartements', JSON.stringify(data));
+            modifModal.hide();
+            chargerAppartements(); 
+        }
+    }
+
+    function chargerAppartements() {
+      const data = JSON.parse(localStorage.getItem('appartements')) || [];
       liste.innerHTML = '';
-      appartementsLocaux = [];
-      
-      querySnapshot.forEach((docSnap) => {
-        const apt = docSnap.data();
-        const id = docSnap.id;
-        appartementsLocaux.push({id, ...apt});
-
+      data.forEach((apt, index) => {
         const card = document.createElement('div');
-        card.className = 'card shadow-sm';
+        card.className = 'card';
         const imgProprio = apt.signatureProprio ? `<img src="${apt.signatureProprio}" class="signature-preview">` : '<span class="text-muted small">Aucune signature</span>';
         const imgLocataire = apt.signatureLocataire ? `<img src="${apt.signatureLocataire}" class="signature-preview">` : '<span class="text-muted small">Aucune signature</span>';
-        
         card.innerHTML = `
           <div class="card-body">
-            <h5 class="card-title text-primary">${apt.nom}</h5>
+            <h5 class="card-title">${apt.nom}</h5>
             <div class="row">
               <div class="col-md-8">
                 <p class="card-text">
                   📅 Intégré le : ${apt.dateEntree || apt.date}<br> 
-                  💰 Loyer : ${parseFloat(apt.cout).toLocaleString()} FCFA<br>
-                  💵 Avance : ${parseFloat(apt.avance || 0).toLocaleString()} FCFA<br>
+                  💰 Loyer : ${apt.cout} FCFA<br>
+                  💵 Avance : ${apt.avance || 0} FCFA<br>
                   👤 Locataire : ${apt.locataire}
                 </p>
               </div>
@@ -349,69 +356,26 @@
               <div class="col-md-2 text-center"><small class="fw-bold">Locataire</small><br>${imgLocataire}</div>
             </div>
             <div class="mt-3">
-                <button class="btn btn-sm btn-outline-info btn-modifier" data-id="${id}">Modifier</button>
-                <button class="btn btn-sm btn-outline-danger btn-supprimer" data-id="${id}">Supprimer</button>
+                <button class="btn btn-sm btn-outline-info btn-modifier" data-index="${index}">Modifier</button>
+                <button class="btn btn-sm btn-outline-danger btn-supprimer" data-index="${index}">Supprimer</button>
             </div>
           </div>`;
         liste.appendChild(card);
       });
     }
 
-    // Gestion des clics sur la liste (Délégation d'événements)
-    liste.addEventListener('click', async (e) => {
-        const id = e.target.getAttribute('data-id');
-        if (e.target.classList.contains('btn-supprimer')) {
-            if (confirm("Supprimer cet appartement du Cloud ?")) {
-                await deleteDoc(doc(db, "appartements", id));
-                chargerAppartements();
-            }
-        } else if (e.target.classList.contains('btn-modifier')) {
-            const apt = appartementsLocaux.find(a => a.id === id);
-            document.getElementById('modifIndex').value = id;
-            document.getElementById('modifNom').value = apt.nom;
-            document.getElementById('modifDate').value = apt.dateEntree || apt.date; 
-            document.getElementById('modifCout').value = apt.cout;
-            document.getElementById('modifAvance').value = apt.avance || 0;
-            document.getElementById('modifProprietaireNom').value = apt.proprietaireNom;
-            document.getElementById('modifProprietaireContact').value = apt.proprietaireContact;
-            document.getElementById('modifLocataire').value = apt.locataire;
-            document.getElementById('modifTelephone').value = apt.telephone;
-            modifModal.show();
-        }
-    });
-
-    document.getElementById('btnSauvegarderModif').addEventListener('click', async () => {
-        const id = document.getElementById('modifIndex').value;
-        const sigProprio = await encodeImageFileAsURL(document.getElementById('modifSignatureProprio'));
-        const sigLocataire = await encodeImageFileAsURL(document.getElementById('modifSignatureLocataire'));
-        
-        const aptRef = doc(db, "appartements", id);
-        const aptAncien = appartementsLocaux.find(a => a.id === id);
-
-        const updates = {
-            nom: document.getElementById('modifNom').value,
-            dateEntree: document.getElementById('modifDate').value, 
-            cout: parseFloat(document.getElementById('modifCout').value),
-            avance: parseFloat(document.getElementById('modifAvance').value),
-            proprietaireNom: document.getElementById('modifProprietaireNom').value,
-            proprietaireContact: document.getElementById('modifProprietaireContact').value,
-            locataire: document.getElementById('modifLocataire').value,
-            telephone: document.getElementById('modifTelephone').value,
-            signatureProprio: sigProprio || aptAncien.signatureProprio || null,
-            signatureLocataire: sigLocataire || aptAncien.signatureLocataire || null
-        };
-
-        await updateDoc(aptRef, updates);
-        modifModal.hide();
-        chargerAppartements();
-        alert("Mise à jour réussie !");
-    });
+    function supprimerAppartement(index) {
+      if (!confirm("Êtes-vous sûr de vouloir supprimer cet appartement ?")) return;
+      const data = JSON.parse(localStorage.getItem('appartements')) || [];
+      data.splice(index, 1);
+      localStorage.setItem('appartements', JSON.stringify(data));
+      chargerAppartements();
+    }
 
     form.addEventListener('submit', async function(e) {
       e.preventDefault();
       const sigProprio = await encodeImageFileAsURL(document.getElementById('signatureProprio'));
       const sigLocataire = await encodeImageFileAsURL(document.getElementById('signatureLocataire'));
-      
       const nouveau = {
         nom: document.getElementById('nom').value,
         dateEntree: document.getElementById('date').value, 
@@ -422,24 +386,24 @@
         locataire: document.getElementById('locataire').value,
         telephone: document.getElementById('telephone').value,
         signatureProprio: sigProprio,
-        signatureLocataire: sigLocataire,
-        dateCreation: new Date().toISOString()
+        signatureLocataire: sigLocataire
       };
+      const data = JSON.parse(localStorage.getItem('appartements')) || [];
+      data.push(nouveau);
+      localStorage.setItem('appartements', JSON.stringify(data));
+      form.reset();
+      chargerAppartements();
+    });
 
-      try {
-        await addDoc(collection(db, "appartements"), nouveau);
-        form.reset();
-        chargerAppartements();
-        alert("Appartement ajouté au Cloud !");
-      } catch (err) {
-        console.error("Erreur Firebase:", err);
-      }
+    liste.addEventListener('click', function(e) {
+        const indexAction = e.target.getAttribute('data-index');
+        if (e.target.classList.contains('btn-supprimer')) supprimerAppartement(parseInt(indexAction));
+        else if (e.target.classList.contains('btn-modifier')) modifierAppartement(parseInt(indexAction));
     });
 
     toggleBtn.addEventListener('click', () => {
       liste.style.display = (liste.style.display === 'none') ? 'block' : 'none';
       toggleBtn.textContent = (liste.style.display === 'none') ? 'Afficher les appartements' : 'Masquer les appartements';
-      if(liste.style.display === 'block') chargerAppartements();
     });
 
     window.onload = chargerAppartements;
