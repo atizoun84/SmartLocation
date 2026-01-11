@@ -239,19 +239,24 @@
     const inputMontant = document.getElementById('montant');
     let listeAppartementsData = [];
 
-    // 1. Charger la liste des appartements dans le SELECT
+    // 1. Charger la liste des appartements dans le SELECT (Mise à jour demandée)
     async function chargerAppartements() {
-        const querySnapshot = await getDocs(collection(db, "appartements"));
-        selectApt.innerHTML = '<option value="">-- Choisir un appartement --</option>';
+        const select = document.getElementById('selectAppartement');
+        // Vérifiez que le nom ici est bien "appartements"
+        const querySnapshot = await getDocs(collection(db, "appartements")); 
+        
+        select.innerHTML = '<option value="">-- Choisir un appartement --</option>';
         listeAppartementsData = [];
         
         querySnapshot.forEach((docSnap) => {
-            const apt = { id: docSnap.id, ...docSnap.data() };
-            listeAppartementsData.push(apt);
-            const option = document.createElement('option');
-            option.value = apt.id;
-            option.textContent = `${apt.nom} (${apt.locataire})`;
-            selectApt.appendChild(option);
+            const apt = docSnap.data();
+            // On conserve l'objet complet dans notre liste locale pour les autres fonctions
+            listeAppartementsData.push({ id: docSnap.id, ...apt });
+            
+            const opt = document.createElement('option');
+            opt.value = docSnap.id; // L'ID Firebase
+            opt.textContent = apt.nom; // Le nom de l'appartement
+            select.appendChild(opt);
         });
         genererListeMois();
     }
@@ -306,9 +311,7 @@
         }
 
         try {
-            // On enregistre un document par mois payé pour faciliter les calculs du dashboard
             const coutUnitaire = montantTotal / moisSelectionnes.length;
-            
             for (const m de moisSelectionnes) {
                 await addDoc(collection(db, "paiements"), {
                     idAppartement: aptId,
@@ -319,10 +322,8 @@
                     dateCreation: new Date().toISOString()
                 });
             }
-
             alert("Paiement(s) enregistré(s) avec succès !");
             chargerHistorique(aptId);
-            // Reset partiel
             selectMois.selectedIndex = -1;
             inputMontant.value = "";
         } catch (e) {
@@ -351,7 +352,6 @@
         });
     }
 
-    // Rendre la suppression globale
     window.supprimerPaiement = async (id, aptId) => {
         if(confirm("Supprimer ce paiement ?")) {
             await deleteDoc(doc(db, "paiements", id));
@@ -359,7 +359,6 @@
         }
     };
 
-    // Gestion de l'affichage de l'historique
     document.getElementById('toggleHistoriqueBtn').addEventListener('click', () => {
         const section = document.getElementById('historiqueSection');
         if(section.style.display === "none" || section.style.display === "") {
